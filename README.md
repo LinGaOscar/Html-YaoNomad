@@ -2,12 +2,16 @@
 
 以《易經》三枚硬幣卜卦法為核心的多平台系統。
 
+線上體驗：https://lingaoscar.github.io/YaoNomad/
+
 ## 平台
 
 | 平台 | 目錄 | 技術 |
 |------|------|------|
-| Web PWA | `/web` | HTML / CSS / JavaScript（無框架） |
+| Web | `/web` | HTML / CSS / JavaScript（無框架、無外部依賴） |
 | JS TUI | `/tui-js` | Node.js（無框架） |
+
+目前 `/web` 為最小可用版：僅有 `index.html` 呼叫核心邏輯並顯示結果，尚未提供 PWA 所需的 `manifest.json` / `service-worker.js`（離線快取），因此還不能在離線狀態下使用。
 
 ## 架構
 
@@ -34,8 +38,14 @@ node tui-js/main.js
 
 ### Web
 
-直接開啟 `web/index.html`，或啟動任一靜態伺服器。
+直接開啟 `web/index.html`，或啟動任一靜態伺服器。push 到 `main` 會由 GitHub Actions 自動部署到 GitHub Pages。
+
+## 測試
+
+```bash
+node --test web/core/*.test.js
+```
 
 ## 開發
 
-詳見 [CLAUDE.md](./CLAUDE.md) 與 [設計規格](./docs/superpowers/specs/2026-06-15-core-design.md)。
+本機開發環境設定、測試指令細節見 [dev.md](./dev.md)；架構規則與慣例見 [CLAUDE.md](./CLAUDE.md)；設計脈絡見 [設計規格](./docs/superpowers/specs/2026-06-15-core-design.md)。

@@ -8,6 +8,8 @@ YaoNomad 是以《易經》三枚硬幣卜卦法為核心的多平台系統，�
 
 **目前進度**：`core-spec` 與 `web/core/`（casting、hexagrams、models）已完成並通過測試；`tui-js/main.js` 可執行。`web/` 僅有最小可用版的 `index.html`，`styles.css`、`main.js`、`manifest.json`、`service-worker.js` 尚未建立。詳細規劃見 `PLAN.md`。
 
+線上部署（GitHub Pages）：https://lingaoscar.github.io/YaoNomad/。本機開發環境設定見 `dev.md`。
+
 ## 架構原則
 
 1. **`/core-spec` 為單一真實來源**：演算法或資料模型變更，必須先更新 `/core-spec/README.md`，再同步更新實作。
