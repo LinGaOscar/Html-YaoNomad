@@ -2,7 +2,7 @@
 
 以《易經》三枚硬幣卜卦法為核心的多平台系統。
 
-線上體驗：https://lingaoscar.github.io/YaoNomad/
+線上體驗：https://lingaoscar.github.io/Html-YaoNomad/
 
 ## 平台
 

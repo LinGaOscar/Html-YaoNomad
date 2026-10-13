@@ -46,4 +46,4 @@ node --test --test-name-pattern="<測試名稱>" web/core/casting.test.js  # 執
 
 ## 部署
 
-push 到 `main` 會觸發 `.github/workflows/deploy-pages.yml`，將 `/web` 部署到 GitHub Pages（`https://lingaoscar.github.io/YaoNomad/`）。`/tui-js`、`/core-spec` 不參與部署。
+push 到 `main` 會觸發 `.github/workflows/deploy-pages.yml`，將 `/web` 部署到 GitHub Pages（`https://lingaoscar.github.io/Html-YaoNomad/`）。`/tui-js`、`/core-spec` 不參與部署。
