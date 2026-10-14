@@ -689,7 +689,7 @@ h1, h2, h3, p { margin: 0; }
   border-radius: 3px;
   overflow: hidden;
 }
-.sd-scene svg { display: block; width: 100%; height: 100%; }
+.sd-scene canvas { display: block; width: 100%; height: 100%; }
 .sd-text { min-width: 0; }
 .sd-text > p:not(.sd-label) { line-height: 1.8; letter-spacing: 0.03em; }
 .sd-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 4px; }
@@ -710,162 +710,6 @@ h1, h2, h3, p { margin: 0; }
 .sd-close:hover { border-color: var(--gold); }
 .sd-label { margin-top: 12px; font-size: 0.78rem; color: var(--gold); letter-spacing: 0.24em; }
 .sd-story { font-family: var(--serif); }
-
-/* 場景共用筆觸 */
-.scene .ink { fill: var(--text); }
-.scene .line { fill: none; stroke: var(--text); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-.scene .thin { stroke-width: 1.1; }
-.scene .wash { fill: var(--gold-soft); }
-.scene .paper { fill: var(--card); }
-.scene .acc-fill { fill: var(--acc); }
-.scene * { transform-box: view-box; transform-origin: 0 0; }
-
-/* 開會：四人輪流發言 */
-.scene-meet .bubble { transform-box: fill-box; transform-origin: 50% 100%; animation: sc-bubble 6s ease-in-out infinite; }
-.scene-meet .head { animation: sc-speak 6s ease-in-out infinite; }
-.scene-meet .b1, .scene-meet .p1 .head { animation-delay: 0s; }
-.scene-meet .b2, .scene-meet .p2 .head { animation-delay: -4.5s; }
-.scene-meet .b3, .scene-meet .p3 .head { animation-delay: -3s; }
-.scene-meet .b4, .scene-meet .p4 .head { animation-delay: -1.5s; }
-@keyframes sc-bubble {
-  0% { opacity: 0; transform: translateY(6px) scale(0.85); }
-  5%, 22% { opacity: 1; transform: none; }
-  27%, 100% { opacity: 0; transform: translateY(-4px); }
-}
-@keyframes sc-speak {
-  0%, 2% { fill: var(--text); }
-  6%, 22% { fill: var(--acc); }
-  27%, 100% { fill: var(--text); }
-}
-
-/* 撰寫報告：逐行書寫 */
-.scene-write .cycle, .scene-build .cycle { animation: sc-cycle 7s linear infinite; }
-.scene-build .cycle { animation-duration: 6.5s; }
-.scene-write .w { fill: none; stroke: var(--text); stroke-width: 2.2; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; animation: 7s ease-out infinite; }
-.scene-write .w.title { stroke: var(--acc); stroke-width: 3.2; }
-.scene-write .w0 { animation-name: sc-w0; }
-.scene-write .w1 { animation-name: sc-w1; }
-.scene-write .w2 { animation-name: sc-w2; }
-.scene-write .w3 { animation-name: sc-w3; }
-.scene-write .w4 { animation-name: sc-w4; }
-.scene-write .w5 { animation-name: sc-w5; }
-.scene-write .pen { transform: translate(120px, 123px); animation: sc-pen 7s linear infinite; }
-@keyframes sc-cycle { 0%, 86% { opacity: 1; } 93%, 99% { opacity: 0; } 100% { opacity: 1; } }
-@keyframes sc-w0 { 0%, 8% { stroke-dashoffset: 1; } 17%, 94% { stroke-dashoffset: 0; } 96%, 100% { stroke-dashoffset: 1; } }
-@keyframes sc-w1 { 0%, 19% { stroke-dashoffset: 1; } 28%, 94% { stroke-dashoffset: 0; } 96%, 100% { stroke-dashoffset: 1; } }
-@keyframes sc-w2 { 0%, 30% { stroke-dashoffset: 1; } 39%, 94% { stroke-dashoffset: 0; } 96%, 100% { stroke-dashoffset: 1; } }
-@keyframes sc-w3 { 0%, 41% { stroke-dashoffset: 1; } 50%, 94% { stroke-dashoffset: 0; } 96%, 100% { stroke-dashoffset: 1; } }
-@keyframes sc-w4 { 0%, 52% { stroke-dashoffset: 1; } 61%, 94% { stroke-dashoffset: 0; } 96%, 100% { stroke-dashoffset: 1; } }
-@keyframes sc-w5 { 0%, 63% { stroke-dashoffset: 1; } 70%, 94% { stroke-dashoffset: 0; } 96%, 100% { stroke-dashoffset: 1; } }
-@keyframes sc-pen {
-  0%, 6% { transform: translate(84px, 39px); opacity: 0; }
-  8% { transform: translate(84px, 39px); opacity: 1; }
-  17% { transform: translate(136px, 39px); }
-  19% { transform: translate(84px, 59px); }
-  28% { transform: translate(156px, 59px); }
-  30% { transform: translate(84px, 75px); }
-  39% { transform: translate(150px, 75px); }
-  41% { transform: translate(84px, 91px); }
-  50% { transform: translate(156px, 91px); }
-  52% { transform: translate(84px, 107px); }
-  61% { transform: translate(146px, 107px); }
-  63% { transform: translate(84px, 123px); }
-  70% { transform: translate(120px, 123px); opacity: 1; }
-  76%, 100% { transform: translate(150px, 140px); opacity: 0; }
-}
-
-/* 抓BUG：放大鏡追蟲 */
-.scene-bug .code { fill: none; stroke: var(--text); stroke-width: 3; stroke-linecap: round; opacity: 0.2; }
-.scene-bug .bug { transform: translate(112px, 82px) rotate(60deg); animation: sc-bug 6s ease-in-out infinite; }
-.scene-bug .lens { transform: translate(150px, 104px); animation: sc-lens 6s ease-in-out infinite; }
-.scene-bug .handle { fill: none; stroke: var(--text); stroke-width: 5; stroke-linecap: round; }
-.scene-bug .check { fill: none; stroke: var(--acc); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 0; animation: sc-check 6s ease-out infinite; }
-@keyframes sc-bug {
-  0% { transform: translate(30px, 130px) rotate(50deg); opacity: 0; }
-  6% { opacity: 1; }
-  22% { transform: translate(62px, 112px) rotate(70deg); }
-  36% { transform: translate(86px, 100px) rotate(45deg); }
-  50%, 56% { transform: translate(112px, 82px) rotate(60deg) scale(1); opacity: 1; }
-  64%, 100% { transform: translate(112px, 82px) rotate(60deg) scale(0); opacity: 0; }
-}
-@keyframes sc-lens {
-  0% { transform: translate(196px, 124px) scale(1); opacity: 0; }
-  8% { opacity: 1; }
-  30% { transform: translate(168px, 112px) scale(1); }
-  56% { transform: translate(112px, 82px) scale(1); }
-  62% { transform: translate(112px, 82px) scale(1.15); }
-  70%, 86% { transform: translate(112px, 82px) scale(1); opacity: 1; }
-  96%, 100% { transform: translate(196px, 124px) scale(1); opacity: 0; }
-}
-@keyframes sc-check {
-  0%, 62% { stroke-dashoffset: 1; opacity: 1; }
-  72%, 88% { stroke-dashoffset: 0; opacity: 1; }
-  95%, 100% { stroke-dashoffset: 0; opacity: 0; }
-}
-
-/* 系統開發：積木疊成樓閣 */
-.scene-build .blk { animation: 6.5s cubic-bezier(0.3, 1.3, 0.5, 1) infinite; }
-.scene-build .k0 { animation-name: sc-k0; }
-.scene-build .k1 { animation-name: sc-k1; }
-.scene-build .k2 { animation-name: sc-k2; }
-.scene-build .k3 { animation-name: sc-k3; }
-.scene-build .k4 { animation-name: sc-k4; }
-.scene-build .k5 { animation-name: sc-k5; }
-.scene-build .roof { fill: none; stroke: var(--acc); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 0; animation: sc-roof 6.5s ease-out infinite; }
-@keyframes sc-k0 { 0%, 6% { transform: translateY(-50px); opacity: 0; } 13%, 100% { transform: none; opacity: 1; } }
-@keyframes sc-k1 { 0%, 14% { transform: translateY(-50px); opacity: 0; } 21%, 100% { transform: none; opacity: 1; } }
-@keyframes sc-k2 { 0%, 22% { transform: translateY(-50px); opacity: 0; } 29%, 100% { transform: none; opacity: 1; } }
-@keyframes sc-k3 { 0%, 31% { transform: translateY(-50px); opacity: 0; } 38%, 100% { transform: none; opacity: 1; } }
-@keyframes sc-k4 { 0%, 39% { transform: translateY(-50px); opacity: 0; } 46%, 100% { transform: none; opacity: 1; } }
-@keyframes sc-k5 { 0%, 48% { transform: translateY(-50px); opacity: 0; } 55%, 100% { transform: none; opacity: 1; } }
-@keyframes sc-roof { 0%, 57% { stroke-dashoffset: 1; } 66%, 100% { stroke-dashoffset: 0; } }
-
-/* 程式上線：天燈升空 */
-.scene-launch .faint-line { opacity: 0.3; }
-.scene-launch .glow { opacity: 0.14; }
-.scene-launch .rib { fill: none; stroke: var(--card); stroke-width: 1; opacity: 0.55; }
-.scene-launch .flame { fill: var(--gold); }
-.scene-launch .lantern { animation: sc-lantern 7s ease-in-out infinite; }
-.scene-launch .l2 { animation-delay: -2.4s; }
-.scene-launch .l3 { animation-delay: -4.8s; }
-.scene-launch .spark { fill: var(--gold); animation: sc-spark 3s ease-out infinite; }
-.scene-launch .s2 { animation-delay: -1s; }
-.scene-launch .s3 { animation-delay: -2s; }
-@keyframes sc-lantern {
-  0% { transform: translate(0, 20px); opacity: 0; }
-  12% { opacity: 1; }
-  40% { transform: translate(-6px, -30px); }
-  70% { transform: translate(5px, -75px); opacity: 0.9; }
-  100% { transform: translate(-2px, -120px); opacity: 0; }
-}
-@keyframes sc-spark {
-  0% { transform: translate(0, 0); opacity: 0; }
-  20% { opacity: 0.9; }
-  100% { transform: translate(4px, -50px); opacity: 0; }
-}
-
-/* 餵魚/澆花：錦鯉繞池、飼料落水 */
-.scene-pond .leaf { fill: var(--good); opacity: 0.3; }
-.scene-pond .orbit { transform-origin: 120px 76px; animation: sc-orbit 9s linear infinite; }
-.scene-pond .o2 { animation-duration: 6s; }
-.scene-pond .koi-tail { transform-box: fill-box; transform-origin: 100% 50%; animation: sc-tail 0.6s ease-in-out infinite alternate; }
-.scene-pond .food { animation: sc-food 5s ease-in infinite; }
-.scene-pond .ripple { fill: none; stroke: var(--acc); stroke-width: 1.2; transform-box: fill-box; transform-origin: center; opacity: 0; animation: sc-ripple 5s ease-out infinite; }
-.scene-pond .f2, .scene-pond .r2 { animation-delay: -1.7s; }
-.scene-pond .f3, .scene-pond .r3 { animation-delay: -3.4s; }
-@keyframes sc-orbit { to { transform: rotate(360deg); } }
-@keyframes sc-tail { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
-@keyframes sc-food {
-  0% { transform: translateY(-40px); opacity: 0; }
-  8% { opacity: 1; }
-  30% { transform: translateY(0); opacity: 1; }
-  34%, 100% { transform: translateY(0); opacity: 0; }
-}
-@keyframes sc-ripple {
-  0%, 30% { transform: scale(0.3); opacity: 0; }
-  33% { opacity: 0.8; }
-  70%, 100% { transform: scale(3); opacity: 0; }
-}
 
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
@@ -1210,8 +1054,6 @@ details.card[open] > summary { border-bottom: 1px solid var(--line-soft); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 @media (prefers-reduced-motion: reduce) {
-  .scene *, .scene .cycle { animation: none !important; }
-  .scene-pond .ripple { opacity: 0.5; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;

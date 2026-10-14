@@ -6,7 +6,8 @@ import { fullName, TRIGRAMS } from './core/hexagrams.js'
 import { AFFINITY, CATEGORIES, FORTUNE } from './core/scoring.js'
 import { castKind, evaluate, todayDaily } from './core/progress.js'
 import { encodeShare, decodeShare } from './core/share.js'
-import { TRAITS, relation, tipFor, storyFor, stampsOf, sceneFor, DEFAULT_SEL, resolveSel, selToCode, codeToSel } from './activities.js'
+import { TRAITS, relation, tipFor, storyFor, stampsOf, glyphFor, DEFAULT_SEL, resolveSel, selToCode, codeToSel } from './activities.js'
+import { startInkScene } from './inkscene.js'
 import { inkBurst } from './ink.js'
 import {
   LINE_POS, LINE_KIND, COIN_FACE, LEVEL, KIND_LABEL, methodName, reduceMotion, loadHexagrams, hw, esc,
@@ -103,7 +104,7 @@ function categoriesHTML(categories) {
 function detailHTML(s, result) {
   const story = storyFor(s, s.level)
   return `
-    <div class="sd-scene">${sceneFor(s)}</div>
+    <div class="sd-scene"><canvas role="img" aria-label="墨點依${CATEGORIES[s.cats[0]]}類的方式流動，聚成「${glyphFor(s)}」字後化開"></canvas></div>
     <div class="sd-text">
       <div class="sd-head">
         <h3>${esc(s.name)} <b>${s.score}</b><small>/100 · ${LEVEL[s.level]}</small></h3>
@@ -124,6 +125,7 @@ function setupScoreDetail(grid, scores, result) {
   panel.id = 'score-detail'
   panel.setAttribute('role', 'region')
   let openIdx = -1
+  let stopScene = null
 
   const place = () => {
     if (openIdx < 0) return
@@ -138,6 +140,7 @@ function setupScoreDetail(grid, scores, result) {
   const close = () => {
     const card = cards[openIdx]
     openIdx = -1
+    stopScene?.()
     panel.remove()
     cards.forEach(c => { c.classList.remove('open'); c.setAttribute('aria-expanded', 'false') })
     card?.focus()
@@ -153,6 +156,9 @@ function setupScoreDetail(grid, scores, result) {
     panel.querySelector('.sd-close').addEventListener('click', close)
     panel.remove() // 重新插入以重播進場動畫
     place()
+    stopScene?.()
+    const s = scores[i]
+    stopScene = startInkScene(panel.querySelector('canvas'), { glyph: glyphFor(s), cat: s.cats[0], level: s.level })
     panel.scrollIntoView({ block: 'nearest', behavior: reduceMotion.matches ? 'auto' : 'smooth' })
   }
 
