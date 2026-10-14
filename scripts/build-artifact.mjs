@@ -11,7 +11,7 @@ const out = process.argv[2] || join(web, '..', 'dist', 'my-iching.html')
 const read = p => readFileSync(join(web, p), 'utf8')
 
 // 依相依順序排列；每個模組包成 IIFE，避免頂層名稱互相衝突
-const MODULES = ['core/hexagrams.js', 'core/casting.js', 'core/scoring.js', 'ink.js', 'main.js']
+const MODULES = ['core/hexagrams.js', 'core/casting.js', 'core/scoring.js', 'ink.js', 'activities.js', 'main.js']
 
 function wrapModule(path) {
   const exported = []
@@ -43,7 +43,7 @@ for (const [name, text] of [['styles.css', read('styles.css')], ['bundle', bundl
 
 const page = `<title>My易經</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="三錢六擲，一卦觀六事。">
+<meta name="description" content="三錢六擲, 一卦觀六事.">
 ${fonts}
 <style>
 ${read('styles.css')}

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 YaoNomad 是以《易經》三枚硬幣卜卦法為核心的多平台系統，包含 Web PWA（`/web`）與 JS TUI（`/tui-js`）兩種介面實作。核心規格與介面實作嚴格分離。
 
-**目前進度**：`core-spec` 與 `web/core/`（casting、hexagrams、scoring、models）已完成並通過測試；`tui-js/main.js` 可執行。`web/` 為「My易經」PWA：`main.js`（hash 路由：`#/` 首頁、`#/cast` 起卦動畫、`#/r/<id>` 結果、`#/history` 歷史紀錄）、`ink.js`（水墨粒子背景）、`styles.css`、`manifest.json`、`service-worker.js`。歷史紀錄存於 localStorage，只存爻值與硬幣，重開時以 `castFromLines` 重算。詳細規劃見 `PLAN.md`。
+**目前進度**：`core-spec` 與 `web/core/`（casting、hexagrams、scoring、models）已完成並通過測試；`tui-js/main.js` 可執行。`web/` 為「My易經」PWA：`main.js`（hash 路由：`#/` 首頁、`#/cast` 起卦動畫、`#/r/<id>` 結果、`#/history` 歷史紀錄）、`ink.js`（水墨粒子背景）、`activities.js`（六事展開的小故事與 SVG 循環動畫）、`styles.css`、`manifest.json`、`service-worker.js`。歷史紀錄存於 localStorage，只存爻值與硬幣，重開時以 `castFromLines` 重算。畫面文字一律半形：`main.js` 的 `hw()` 在顯示時把全形標點轉半形（`mount`、toast、複製文字都經過它），資料檔維持全形原文。詳細規劃見 `PLAN.md`。
 
 線上部署（GitHub Pages）：https://lingaoscar.github.io/Html-YaoNomad/。本機開發環境設定見 `dev.md`。
 

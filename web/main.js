@@ -2,8 +2,9 @@
 
 import { castHexagram, castFromLines } from './core/casting.js'
 import { fullName, TRIGRAMS } from './core/hexagrams.js'
-import { scoreActivities } from './core/scoring.js'
+import { ACTIVITIES, AFFINITY, scoreActivities } from './core/scoring.js'
 import { initInk, setInkMode, inkBurst, refreshColor } from './ink.js'
+import { STORIES, TRAITS, relation, SCENES } from './activities.js'
 
 const VERSION = 'V3.01'
 const QUESTION = '今日六事'
@@ -29,6 +30,8 @@ const TIPS = {
   '餵魚/澆花': { good: '生活小事做起來特別療癒，順便放空。', fair: '記得就好，別忘了換水。', bad: '容易忘記或手滑，設個提醒吧。' },
 }
 
+const ACTIVITY_INDEX = Object.fromEntries(ACTIVITIES.map((name, i) => [name, i]))
+
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)')
 const view = document.getElementById('view')
 let hexagramsPromise = null
@@ -49,6 +52,14 @@ function loadHexagrams() {
   }
   return hexagramsPromise
 }
+
+/** 全站文字一律半形：全形標點轉成半形，資料檔維持原樣，只在顯示時轉換 */
+const HALF = {
+  '，': ', ', '。': '. ', '、': ', ', '：': ': ', '；': '; ', '！': '! ', '？': '? ',
+  '（': '(', '）': ')', '「': '"', '」': '"', '『': "'", '』': "'", '　': ' ', '…': '...', '—': '-', '～': '~', '／': '/',
+}
+const HALF_RE = new RegExp(`[${Object.keys(HALF).join('')}]`, 'g')
+const hw = s => String(s).replace(HALF_RE, c => HALF[c])
 
 function esc(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
@@ -83,7 +94,7 @@ const sleep = ms => new Promise(r => setTimeout(r, reduceMotion.matches ? Math.m
 
 function toast(msg) {
   const el = document.getElementById('toast')
-  el.textContent = msg
+  el.textContent = hw(msg)
   el.classList.add('show')
   clearTimeout(toast.timer)
   toast.timer = setTimeout(() => el.classList.remove('show'), 1800)
@@ -148,7 +159,7 @@ async function route() {
 /** 以模板字串渲染畫面；所有外來字串皆須先經 esc() */
 function mount(html) {
   const tpl = document.createElement('template')
-  tpl.innerHTML = html.trim()
+  tpl.innerHTML = hw(html.trim())
   const node = tpl.content.firstElementChild
   node.classList.add('view-enter')
   view.replaceChildren(node)
@@ -256,7 +267,7 @@ async function renderCasting(token) {
   await sleep(500)
   for (let i = 0; i < 6; i++) {
     if (done || token !== navToken) return
-    status.textContent = `擲${LINE_POS[i]}中…`
+    status.textContent = hw(`擲${LINE_POS[i]}中…`)
     for (const c of coinEls) {
       c.classList.remove('spin', 'head')
       void c.offsetWidth // 重新觸發動畫
@@ -266,7 +277,7 @@ async function renderCasting(token) {
     if (done || token !== navToken) return
     coins[i].forEach((v, k) => coinEls[k].classList.toggle('head', v === 2))
     const line = result.lines[i]
-    status.textContent = `${LINE_POS[i]}：${coins[i].map(v => COIN_FACE[v]).join(' ')} → ${line.value} ${LINE_KIND[line.value]}`
+    status.textContent = hw(`${LINE_POS[i]}：${coins[i].map(v => COIN_FACE[v]).join(' ')} → ${line.value} ${LINE_KIND[line.value]}`)
     const el = lineEls[i]
     el.innerHTML = line.yin ? '<i></i><i></i>' : '<i></i>'
     el.classList.add('on')
@@ -302,6 +313,87 @@ function readingHTML(title, hex, movingLines) {
     </article>`
 }
 
+/** 為什麼是這個分數：用上下卦的性質說明，有變卦再說明它把分數往哪帶 */
+function whyText(s, result) {
+  const i = ACTIVITY_INDEX[s.name]
+  const part = (label, code) => {
+    const t = TRIGRAMS[code]
+    return `${label}${t.name}為${t.image}，主${TRAITS[code]}，對${s.name}${relation(AFFINITY[code][i])}`
+  }
+  const { present, future, lines } = result
+  const head = present.upper === present.lower
+    ? `本卦${fullName(present)}，${part('上下皆', present.lower)}。`
+    : `本卦${fullName(present)}：${part('下卦', present.lower)}；${part('上卦', present.upper)}。`
+  let tail = ''
+  if (future) {
+    const diff = s.future - s.present
+    const move = diff > 3 ? '把分數往上帶' : diff < -3 ? '把分數往下拉' : '對分數影響不大'
+    tail += `變卦${fullName(future)}佔四分之一，${move}。`
+  }
+  const moving = lines.filter(l => l.changing).length
+  if (s.name === '程式上線' && moving) tail += `另有 ${moving} 個變爻，局勢未定，上線再扣 ${moving * 4} 分。`
+  return head + tail
+}
+
+function detailHTML(s, result) {
+  return `
+    <div class="sd-scene">${SCENES[s.name]}</div>
+    <div class="sd-text">
+      <div class="sd-head">
+        <h3>${esc(s.name)} <b>${s.score}</b><small>/100 · ${LEVEL[s.level]}</small></h3>
+        <button class="sd-close" type="button" aria-label="收起說明">×</button>
+      </div>
+      <p class="sd-label">卦象白話</p>
+      <p>${esc(whyText(s, result))}</p>
+      <p class="sd-label">小故事</p>
+      <p class="sd-story">${esc(STORIES[s.name][s.level])}</p>
+    </div>`
+}
+
+/** 六事卡片點擊展開：說明面板插在該卡所在列的下方，橫跨整列 */
+function setupScoreDetail(grid, scores, result) {
+  const cards = [...grid.querySelectorAll('.score')]
+  const panel = document.createElement('div')
+  panel.id = 'score-detail'
+  panel.setAttribute('role', 'region')
+  let openIdx = -1
+
+  const place = () => {
+    if (openIdx < 0) return
+    const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length || 1
+    const end = Math.min(cards.length - 1, Math.floor(openIdx / cols) * cols + cols - 1)
+    if (panel.previousElementSibling !== cards[end]) cards[end].after(panel)
+    const c = cards[openIdx].getBoundingClientRect()
+    const g = grid.getBoundingClientRect()
+    panel.style.setProperty('--notch', `${c.left - g.left + c.width / 2}px`)
+  }
+
+  const close = () => {
+    const card = cards[openIdx]
+    openIdx = -1
+    panel.remove()
+    cards.forEach(c => { c.classList.remove('open'); c.setAttribute('aria-expanded', 'false') })
+    card?.focus()
+  }
+
+  const open = i => {
+    if (openIdx === i) return close()
+    openIdx = i
+    cards.forEach((c, k) => { c.classList.toggle('open', k === i); c.setAttribute('aria-expanded', String(k === i)) })
+    panel.className = `score-detail ${scores[i].level}`
+    panel.setAttribute('aria-label', `${scores[i].name}說明`)
+    panel.innerHTML = hw(detailHTML(scores[i], result))
+    panel.querySelector('.sd-close').addEventListener('click', close)
+    panel.remove() // 重新插入以重播進場動畫
+    place()
+    panel.scrollIntoView({ block: 'nearest', behavior: reduceMotion.matches ? 'auto' : 'smooth' })
+  }
+
+  cards.forEach((c, i) => c.addEventListener('click', () => open(i)))
+  panel.addEventListener('keydown', e => { if (e.key === 'Escape') close() })
+  new ResizeObserver(place).observe(grid)
+}
+
 function copyText(record, result, scores) {
   const { present, future, lines } = result
   const changing = lines.map((l, i) => (l.changing ? LINE_POS[i] : null)).filter(Boolean)
@@ -327,7 +419,7 @@ function copyText(record, result, scores) {
   if (future) {
     out.push('', `變卦卦辭：${future.name}：${future.judgment}`, `象曰：${future.image}`, `白話：${future.plain}`, `職場：${future.advice}`)
   }
-  return out.join('\n')
+  return hw(out.join('\n'))
 }
 
 async function copyToClipboard(text) {
@@ -363,7 +455,9 @@ async function renderResult(token, id) {
   const good = scores.filter(s => s.level === 'good').sort((a, b) => b.score - a.score)
   const bad = scores.filter(s => s.level === 'bad').sort((a, b) => a.score - b.score)
   const fair = scores.length - good.length - bad.length
-  const listText = (arr, cls = '') => (arr.length ? arr.map(s => `<b class="${cls}">${esc(s.name)}</b>（${s.score}）`).join(' · ') : '—')
+  const listText = (arr, cls = '') => (arr.length
+    ? arr.map(s => `<span class="nw"><b class="${cls}">${esc(s.name)}</b>（${s.score}）</span>`).join(' · ')
+    : '—')
 
   const node = mount(`
     <section class="result">
@@ -389,16 +483,17 @@ async function renderResult(token, id) {
         <p class="summary">宜：${listText(good)}<br>忌：${listText(bad, 'bad')}</p>
         <div class="score-grid">
           ${scores.map((s, i) => `
-            <article class="score ${s.level}" style="animation-delay:${0.1 + i * 0.07}s">
-              <h3>${esc(s.name)}</h3>
+            <button class="score ${s.level}" type="button" aria-expanded="false" aria-controls="score-detail" style="animation-delay:${0.1 + i * 0.07}s">
+              <span class="score-name">${esc(s.name)}</span>
               <span class="chip">${LEVEL[s.level]}</span>
-              <div class="num"><b>${s.score}</b><small>/100</small></div>
+              <span class="num"><b>${s.score}</b><small>/100</small></span>
               <span class="meter" aria-hidden="true"><i style="width:${s.score}%"></i></span>
-              <p class="mix">本卦 ${s.present} · ${s.future === null ? '無變卦' : `變卦 ${s.future}`}</p>
-              <p class="tip">${esc(TIPS[s.name][s.level])}</p>
-            </article>`).join('')}
+              <span class="mix">本卦 ${s.present} · ${s.future === null ? '無變卦' : `變卦 ${s.future}`}</span>
+              <span class="tip">${esc(TIPS[s.name][s.level])}</span>
+              <span class="more" aria-hidden="true">看故事</span>
+            </button>`).join('')}
         </div>
-        <p class="fine note">分數依本卦（75%）與變卦（25%）上下卦的取象計算，變爻越多越不利上線；僅供參考，請依實際情況判斷。</p>
+        <p class="fine note">點任一項可展開白話說明與小故事。分數依本卦（75%）與變卦（25%）上下卦的取象計算，變爻越多越不利上線；僅供參考，請依實際情況判斷。</p>
       </section>
 
       <div class="r-grid">
@@ -495,6 +590,8 @@ async function renderResult(token, id) {
       <p class="fine">卦象由本機亂數產生，僅供娛樂與自省，不構成任何決策建議。</p>
     </section>`)
 
+  setupScoreDetail(node.querySelector('.score-grid'), scores, result)
+
   node.querySelector('[data-copy]').addEventListener('click', async () => {
     await copyToClipboard(copyText(record, result, scores))
     toast('已複製完整卦象')
@@ -550,7 +647,7 @@ async function renderHistory(token) {
   clearBtn?.addEventListener('click', () => {
     if (!clearBtn.classList.contains('armed')) {
       clearBtn.classList.add('armed')
-      clearBtn.textContent = '確定清空？再點一次'
+      clearBtn.textContent = hw('確定清空？再點一次')
       setTimeout(() => {
         clearBtn.classList.remove('armed')
         clearBtn.textContent = '清空紀錄'

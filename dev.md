@@ -15,6 +15,7 @@
   index.html        外框（標題列、粒子畫布）
   main.js           hash 路由與四個畫面：首頁、起卦動畫、結果、歷史紀錄
   ink.js            水墨粒子背景（純視覺）
+  activities.js     六事展開說明：小故事、八卦性質、SVG 循環動畫
   styles.css        色票與版面（深淺色）
   service-worker.js 網路優先、離線回快取；改靜態檔後請遞增 CACHE 版本
 /tui-js/            終端機介面，main.js 直接 import ../web/core/
