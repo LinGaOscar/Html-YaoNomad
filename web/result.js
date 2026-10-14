@@ -105,7 +105,7 @@ function detailHTML(s, result) {
   const story = storyFor(s, s.level)
   return `
     <div class="sd-scene">
-      <canvas role="img" aria-label="墨點依${CATEGORIES[s.cats[0]]}類的方式流動，聚成篆書「${glyphFor(s)}」字後化開"></canvas>
+      <canvas role="img" aria-label="墨點依${CATEGORIES[s.cats[0]]}類的方式流動，先聚成篆書「${glyphFor(s)}」字，再化為今字後散開"></canvas>
       <span class="seal-cap" aria-hidden="true">中山王篆 · ${glyphFor(s)}</span>
     </div>
     <div class="sd-text">
@@ -161,7 +161,17 @@ function setupScoreDetail(grid, scores, result) {
     place()
     stopScene?.()
     const s = scores[i]
-    stopScene = startInkScene(panel.querySelector('canvas'), { glyph: glyphFor(s), seal: sealFor(s), cat: s.cats[0], level: s.level })
+    const cap = panel.querySelector('.seal-cap')
+    stopScene = startInkScene(panel.querySelector('canvas'), {
+      glyph: glyphFor(s),
+      seal: sealFor(s),
+      cat: s.cats[0],
+      level: s.level,
+      onPhase: phase => {
+        cap.textContent = hw(`${phase === 'seal' ? '中山王篆' : '明體'} · ${glyphFor(s)}`)
+        cap.classList.toggle('modern', phase === 'modern')
+      },
+    })
     panel.scrollIntoView({ block: 'nearest', behavior: reduceMotion.matches ? 'auto' : 'smooth' })
   }
 

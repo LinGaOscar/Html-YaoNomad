@@ -2,23 +2,27 @@
 
 /**
  * 六事展開面板的水墨粒子循環動畫（通用）：
- * 墨點依「主分類」的方式流動 → 聚成事項代表字的篆字（中山王篆，金文）→ 停留暈墨 → 化開，無縫循環。
+ * 墨點依「主分類」的方式流動 → 聚成代表字的篆字（中山王篆，金文）→ 流動變形成今字（明體）→ 化開，無縫循環；
+ * 一圈裡看得到字從金文演變到現代字。
  * 每個墨點的位置都直接由時間算出（不累積狀態），所以每一圈完全相同，看起來像一張循環 GIF；
  * 新增事項只要給一個代表字。純視覺，與評分無關。
  */
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)')
-const PERIOD = 7000
+const PERIOD = 9000
 const TAU = Math.PI * 2
 const SEAL_FAMILY = 'YaoNomad Seal'
 const SEAL_FONT = `"${SEAL_FAMILY}"`
-/** 篆字字型載入失敗時，退回一般襯線字的繁體代表字 */
-const FALLBACK_FONT = '"Noto Serif TC", "Songti TC", "PMingLiU", "MingLiU", "STSong", serif'
+/** 今字（明體）字型；篆字字型無法載入時只顯示今字 */
+const MODERN_FONT = '"Noto Serif TC", "Songti TC", "PMingLiU", "MingLiU", "STSong", serif'
 
-// 一圈的時間軸（0–1）：自由流動 → 聚字（GATHER）→ 停留 → 化開（RELEASE）→ 自由流動
-const GATHER = [0.26, 0.44]
-const RELEASE = [0.72, 0.88]
-const MAX_DELAY = 0.08
+// 一圈的時間軸（0–1）：流動 → 聚成篆字（GATHER）→ 停留 → 化為今字（MORPH）→ 停留 → 化開（RELEASE）→ 流動
+const GATHER = [0.18, 0.32]
+const MORPH = [0.48, 0.58]
+const RELEASE = [0.76, 0.9]
+const MAX_DELAY = 0.06
+const MORPH_DELAY = 0.04
+const STILL_U = 0.4 // 減少動態模式停在篆字成形時
 
 /** 色票轉成 #rrggbb，方便在漸層裡加透明度 */
 function toHex(color) {
@@ -49,9 +53,9 @@ function rng(seed) {
 }
 
 /** 依字形的實際外框縮放並置中（篆字多半修長），回傳字級與基線位置 */
-function layout(g, ch, W, H, font) {
+function layout(g, ch, W, H, font, weight) {
   const probe = 100
-  g.font = `${probe}px ${font}`
+  g.font = `${weight} ${probe}px ${font}`
   const m = g.measureText(ch)
   const left = m.actualBoundingBoxLeft || 0
   const right = m.actualBoundingBoxRight || probe
@@ -59,7 +63,7 @@ function layout(g, ch, W, H, font) {
   const descent = m.actualBoundingBoxDescent || probe * 0.2
   const scale = Math.min((W * 0.62) / (left + right), (H * 0.84) / (ascent + descent))
   return {
-    font: `${probe * scale}px ${font}`,
+    font: `${weight} ${probe * scale}px ${font}`,
     size: probe * scale,
     x: W / 2 - ((right - left) / 2) * scale,
     y: H / 2 + ((ascent - descent) / 2) * scale,
@@ -74,12 +78,12 @@ function drawGlyph(g, ch, lay) {
 }
 
 /** 把字畫在離屏畫布上，取出筆畫上的點；篆字筆畫細，取點較密 */
-function sampleGlyph(ch, W, H, font) {
+function sampleGlyph(ch, W, H, font, weight) {
   const c = document.createElement('canvas')
   c.width = Math.max(1, Math.round(W))
   c.height = Math.max(1, Math.round(H))
   const g = c.getContext('2d', { willReadFrequently: true })
-  const lay = layout(g, ch, W, H, font)
+  const lay = layout(g, ch, W, H, font, weight)
   drawGlyph(g, ch, lay)
   const { data } = g.getImageData(0, 0, c.width, c.height)
   const step = Math.max(2, Math.round(Math.min(W, H) / 70))
@@ -89,7 +93,22 @@ function sampleGlyph(ch, W, H, font) {
       if (data[(y * c.width + x) * 4 + 3] > 110) pts.push([x, y])
     }
   }
-  return { pts, lay }
+  return { pts, lay, ch }
+}
+
+/** 依繞字心的角度排序，再取 n 個點；篆字與今字用同樣的順序對應，變形時墨點沿角度流動 */
+function orderedPoints(pts, n) {
+  if (!pts.length) return []
+  let cx = 0
+  let cy = 0
+  for (const [x, y] of pts) {
+    cx += x
+    cy += y
+  }
+  cx /= pts.length
+  cy /= pts.length
+  const sorted = pts.map(([x, y]) => [x, y, Math.atan2(y - cy, x - cx)]).sort((a, b) => a[2] - b[2])
+  return Array.from({ length: n }, (_, i) => sorted[Math.floor((i * sorted.length) / n)])
 }
 
 /** 柔邊墨點貼圖：中心濃、邊緣化開，比逐點畫圓更像墨也更省效能 */
@@ -218,20 +237,20 @@ function delayFor(cat, p, W, H) {
 /**
  * 在 canvas 上播放循環動畫
  * @param {HTMLCanvasElement} canvas - 尺寸由 CSS 決定
- * @param {{ glyph: string, seal?: string, cat: number, level: 'good'|'fair'|'bad' }} opts
- *   glyph：代表字（繁體，篆字字型無法使用時顯示）；seal：篆字字型中的字碼
+ * @param {{ glyph: string, seal?: string, cat: number, level: 'good'|'fair'|'bad', onPhase?: (phase: 'seal'|'modern') => void }} opts
+ *   glyph：代表字（繁體，今字用）；seal：篆字字型中的字碼；onPhase：畫面在篆字／今字之間切換時呼叫
  * @returns {() => void} 停止函式；canvas 離開文件時也會自動停止
  */
-export function startInkScene(canvas, { glyph, seal = glyph, cat, level }) {
+export function startInkScene(canvas, { glyph, seal = glyph, cat, level, onPhase = () => {} }) {
   const ctx = canvas.getContext('2d')
   const jitter = level === 'bad' ? 1.8 : level === 'good' ? 0.4 : 0.9
   let W = 0
   let H = 0
   let dpr = 1
   let particles = []
-  let glyphLayout = null
-  let ch = glyph
-  let halo = null
+  let shapes = null // { seal, modern }：各自的 { lay, ch }；篆字字型無法使用時 seal 為 null
+  let halos = null
+  let phase = null
   let sprites = null
   let colors = null
   let raf = 0
@@ -247,7 +266,12 @@ export function startInkScene(canvas, { glyph, seal = glyph, cat, level }) {
     if (!colors || colors.ink !== ink || colors.acc !== acc) {
       colors = { ink, acc, gold }
       sprites = { ink: inkSprite(toHex(ink)), acc: inkSprite(toHex(acc)), gold: inkSprite(toHex(gold)) }
-      if (W && glyphLayout) halo = renderHalo(ch, W, H, glyphLayout, acc, dpr)
+      if (W && shapes) {
+        halos = {
+          seal: shapes.seal && renderHalo(shapes.seal.ch, W, H, shapes.seal.lay, acc, dpr),
+          modern: renderHalo(shapes.modern.ch, W, H, shapes.modern.lay, acc, dpr),
+        }
+      }
     }
   }
 
@@ -261,38 +285,35 @@ export function startInkScene(canvas, { glyph, seal = glyph, cat, level }) {
     canvas.height = Math.round(H * dpr)
     const timeout = new Promise(r => setTimeout(r, 1500))
     try {
-      await Promise.race([document.fonts.load(`40px ${SEAL_FONT}`, seal), timeout])
+      await Promise.race([
+        Promise.all([document.fonts.load(`40px ${SEAL_FONT}`, seal), document.fonts.load(`700 40px "Noto Serif TC"`, glyph)]),
+        timeout,
+      ])
     } catch {}
-    let font = SEAL_FONT
-    ch = seal
-    if (!sealReady()) {
-      font = FALLBACK_FONT
-      ch = glyph
-      try {
-        await Promise.race([document.fonts.load(`40px "Noto Serif TC"`, glyph), timeout])
-      } catch {}
-    }
     if (stopped) return
-    const { pts, lay } = sampleGlyph(ch, W, H, font)
+    const modern = sampleGlyph(glyph, W, H, MODERN_FONT, 700)
+    const sealShape = sealReady() ? sampleGlyph(seal, W, H, SEAL_FONT, 400) : null
+    shapes = { seal: sealShape, modern }
     const rand = rng(glyph.codePointAt(0) * 7 + cat)
-    for (let i = pts.length - 1; i > 0; i--) {
-      const j = Math.floor(rand() * (i + 1))
-      ;[pts[i], pts[j]] = [pts[j], pts[i]]
-    }
-    const glyphCount = Math.max(180, Math.min(560, pts.length))
+    const glyphCount = Math.max(180, Math.min(600, Math.max(modern.pts.length, sealShape?.pts.length || 0)))
+    const modernPts = orderedPoints(modern.pts, glyphCount)
+    const sealPts = sealShape ? orderedPoints(sealShape.pts, glyphCount) : modernPts
     const ambient = 40
     particles = Array.from({ length: glyphCount + ambient }, (_, i) => {
       const free = i >= glyphCount
-      const [tx, ty] = pts.length ? pts[i % pts.length] : [W / 2, H / 2]
-      const over = i >= pts.length && !free // 字點不夠時重複使用，稍微錯開
+      const [sx, sy] = sealPts[i] || [W / 2, H / 2]
+      const [mx, my] = modernPts[i] || [sx, sy]
       const p = {
         i,
         free,
         s: rand(),
         s2: rand(),
         a: rand() * TAU,
-        tx: tx + (over ? (rand() - 0.5) * 3 : 0),
-        ty: ty + (over ? (rand() - 0.5) * 3 : 0),
+        tx: sx,
+        ty: sy,
+        mx,
+        my,
+        md: (i / glyphCount) * MORPH_DELAY,
         size: free ? 0.6 + rand() * 1.2 : 0.9 + rand() * 1.4,
         alpha: 0.45 + rand() * 0.5,
         acc: rand() < 0.14,
@@ -302,21 +323,34 @@ export function startInkScene(canvas, { glyph, seal = glyph, cat, level }) {
       p.delay = delayFor(cat, p, W, H)
       return p
     })
-    glyphLayout = lay
     colors = null
     readColors()
   }
 
   function draw(now) {
-    const u = reduceMotion.matches ? 0.58 : ((now - t0) % PERIOD) / PERIOD
+    const u = reduceMotion.matches ? STILL_U : ((now - t0) % PERIOD) / PERIOD
     const θ = u * TAU
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, W, H)
 
+    const hasSeal = Boolean(shapes.seal)
+    const next = hasSeal && u < (MORPH[0] + MORPH[1]) / 2 ? 'seal' : 'modern'
+    if (next !== phase) {
+      phase = next
+      onPhase(phase)
+    }
+
     const hold = weight(u, 0)
-    if (halo && hold > 0) {
-      ctx.globalAlpha = 0.16 * hold
-      ctx.drawImage(halo, 0, 0, W, H)
+    const morph = hasSeal ? smooth((u - MORPH[0]) / (MORPH[1] - MORPH[0])) : 1
+    if (halos && hold > 0) {
+      if (halos.seal && morph < 1) {
+        ctx.globalAlpha = 0.16 * hold * (1 - morph)
+        ctx.drawImage(halos.seal, 0, 0, W, H)
+      }
+      if (morph > 0) {
+        ctx.globalAlpha = 0.16 * hold * morph
+        ctx.drawImage(halos.modern, 0, 0, W, H)
+      }
     }
 
     for (const p of particles) {
@@ -325,13 +359,25 @@ export function startInkScene(canvas, { glyph, seal = glyph, cat, level }) {
       let x = fx
       let y = fy
       if (w > 0) {
-        const dx = p.tx - fx
-        const dy = p.ty - fy
+        // 目標點：篆字 → 今字
+        const m = hasSeal ? smooth((u - MORPH[0] - p.md) / (MORPH[1] - MORPH[0])) : 1
+        let tx = p.tx + (p.mx - p.tx) * m
+        let ty = p.ty + (p.my - p.ty) * m
+        if (m > 0 && m < 1) {
+          const mdx = p.mx - p.tx
+          const mdy = p.my - p.ty
+          const mlen = Math.hypot(mdx, mdy) || 1
+          const bend = Math.sin(Math.PI * m) * 12 * p.side
+          tx += (-mdy / mlen) * bend
+          ty += (mdx / mlen) * bend
+        }
+        const dx = tx - fx
+        const dy = ty - fy
         const len = Math.hypot(dx, dy) || 1
         const arc = Math.sin(Math.PI * w) * ARC[cat] * p.side
         x = fx + dx * w + (-dy / len) * arc
         y = fy + dy * w + (dx / len) * arc
-        if (w > 0.98) {
+        if (w > 0.98 && (m < 0.02 || m > 0.98)) {
           x += Math.sin(θ * 6 + p.a) * jitter
           y += Math.cos(θ * 5 + p.a) * jitter
         }
@@ -357,7 +403,7 @@ export function startInkScene(canvas, { glyph, seal = glyph, cat, level }) {
   function frame(now) {
     if (stopped || !canvas.isConnected) return stop()
     if (++frameCount % 45 === 0) readColors()
-    if (particles.length) draw(now)
+    if (particles.length && shapes) draw(now)
     if (!reduceMotion.matches) raf = requestAnimationFrame(frame)
   }
 

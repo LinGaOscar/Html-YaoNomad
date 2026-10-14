@@ -14,7 +14,7 @@ YaoNomad 是以《易經》三枚硬幣卜卦法為核心的多平台系統，�
 - `result.js`：結果頁（自己的卦例與分享檢視）；`book.js`：卦簿（成就、準度、64 卦圖鑑、重置）與六事樣板頁
 - `ui.js`：共用常數、格式化、`mount`、toast、localStorage 存取（歷史、六事選擇、卦簿起算點）
 - `activities.js`：事項池 `ITEMS`（代號 → 名稱、`cats` [主分類, 副分類]、`glyph` 代表字、提醒、小故事、印章文字）與樣板 `TEMPLATES`（工程師、行政、學生、生活）
-- `inkscene.js`：六事展開面板的水墨粒子循環動畫（canvas）。墨點依主分類的方式流動 → 聚成事項代表字的篆字 → 停留暈墨 → 化開；位置全由時間算出、每 7 秒無縫循環
+- `inkscene.js`：六事展開面板的水墨粒子循環動畫（canvas）。墨點依主分類的方式流動 → 聚成代表字的篆字 → 流動變形成今字（明體）→ 化開；篆字與今字的取點依繞字心的角度對應；位置全由時間算出、每 9 秒無縫循環；角落字名經 `onPhase` 切換「中山王篆／明體」
 - 篆字來自 `web/fonts/yao-seal.woff2`（敬峰中山王篆的子集，SIL OFL 1.1，只含代表字）。字型依簡體字碼收字，繁體代表字要在 `activities.js` 的 `SEAL_CODE` 對應；新增事項要給 `glyph`，再用 `scripts/build-seal-font.py` 重產子集（字型缺字時腳本會報錯）；`ink.js`：全頁水墨粒子背景
 - 六事＝從事項池任選六個不重複的事項（`sel`，事項代號陣列）；樣板頁只能從事項池選，不能自由輸入。事項代號會存進紀錄與分享碼，不可更改；新增事項要補齊三種評等的提醒與故事。預設樣板必須與 `web/core/scoring.js` 的 `DEFAULT_ITEMS` 一致
 - `web/core/progress.js`：今日一卦判定（`castKind`：當天第一卦 daily、換問題 new、同問題第二次 again、第三次起 profane）、連續天數、成就、準度；`web/core/share.js`：分享碼編解碼

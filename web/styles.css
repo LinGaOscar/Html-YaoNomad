@@ -707,6 +707,7 @@ h1, h2, h3, p { margin: 0; }
   letter-spacing: 0.16em;
   pointer-events: none;
 }
+.seal-cap.modern { color: var(--gold); }
 .sd-text { min-width: 0; }
 .sd-text > p:not(.sd-label) { line-height: 1.8; letter-spacing: 0.03em; }
 .sd-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 4px; }
