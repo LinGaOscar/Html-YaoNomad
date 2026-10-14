@@ -13,7 +13,7 @@ YaoNomad 是以《易經》三枚硬幣卜卦法為核心的多平台系統，�
 ## 架構原則
 
 1. **`/core-spec` 為單一真實來源**：演算法或資料模型變更，必須先更新 `/core-spec/README.md`，再同步更新實作。
-2. **核心與介面分離**：`castHexagram` 邏輯位於 `web/core/`，不依賴任何 UI 框架；`tui-js/main.js` 直接 import `../web/core/` 共用，不重複實作。
+2. **核心與介面分離**：`castHexagram(hexagrams, question, coinFn?)` 位於 `web/core/`，不依賴任何 UI 框架，也不自行載入資料——由呼叫端注入 64 卦陣列（Web 用 `fetch('./data/hexagrams.json')`，TUI 與測試用 `readFileSync`）。`tui-js/main.js` 直接 import `../web/core/` 共用，不重複實作（README 所述「兩端各自獨立實作」已過時）。
 3. **離線優先**：Web 端透過 Service Worker 快取所有靜態資源，保證離線可卜卦。
 4. **資料檔同步**：`core-spec/hexagrams.json` 為正本；`web/data/hexagrams.json` 為副本（`tui-js` 直接引用此檔）。修改卦象資料後須手動複製至 `web/data/`。
 
@@ -48,7 +48,7 @@ node --test web/core/*.test.js                                           # 全�
 node --test --test-name-pattern="<測試名稱>" web/core/casting.test.js   # 執行單一測試
 ```
 
-直接開啟 `web/index.html`，或啟動任一靜態伺服器即可在瀏覽器中執行；push 到 `main` 會由 `.github/workflows/deploy-pages.yml` 自動將 `/web` 部署到 GitHub Pages。
+需以靜態伺服器執行（例如 `npx serve web`）；`index.html` 使用 ES module 與 `fetch` 載入資料，以 `file://` 直接開啟會失敗。push 到 `main` 會由 `.github/workflows/deploy-pages.yml` 自動將 `/web` 部署到 GitHub Pages。
 
 ## 卜卦演算法（三硬幣法）
 
@@ -76,6 +76,6 @@ node --test --test-name-pattern="<測試名稱>" web/core/casting.test.js   # �
 
 ## 測試策略
 
-固定亂數種子 → 驗證六爻值（均在 6–9）→ 驗證本卦編號（1–64）→ 驗證變卦編號（若有）。測試位於 `web/core/*.test.js`。
+注入固定的 `coinFn`（回傳 2 或 3）取代 `Math.random` → 驗證六爻值（均在 6–9）→ 驗證本卦編號（1–64）→ 驗證變卦編號（若有）。測試位於 `web/core/*.test.js`。
 
 詳細規格見：`docs/superpowers/specs/2026-06-15-core-design.md`
