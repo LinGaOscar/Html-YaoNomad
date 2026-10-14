@@ -38,10 +38,13 @@ let navToken = 0
 
 function loadHexagrams() {
   if (hexagramsPromise === null) {
-    hexagramsPromise = fetch('./data/hexagrams.json').then(res => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      return res.json()
-    })
+    const embedded = document.getElementById('hexagrams-data')
+    hexagramsPromise = embedded
+      ? Promise.resolve(JSON.parse(embedded.textContent))
+      : fetch('./data/hexagrams.json').then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json()
+      })
     hexagramsPromise.catch(() => { hexagramsPromise = null })
   }
   return hexagramsPromise
@@ -303,7 +306,7 @@ function copyText(record, result, scores) {
   const { present, future, lines } = result
   const changing = lines.map((l, i) => (l.changing ? LINE_POS[i] : null)).filter(Boolean)
   const out = [
-    '富邦大棒手 · 觀卦知時',
+    'My易經 · 觀卦知時',
     `起卦時間：${formatTime(record.time)}（${methodName(record.method)}）`,
     `本卦：第${present.number}卦 ${fullName(present)}（${trigramPair(present)}）`,
     future ? `變卦：第${future.number}卦 ${fullName(future)}（變爻：${changing.join('、')}）` : '變卦：無（六爻皆靜）',
@@ -378,7 +381,7 @@ async function renderResult(token, id) {
       <blockquote class="motto">
         <p class="kicker">今日一句</p>
         <p class="motto-text">${esc(present.motto)}</p>
-        <cite>富邦大棒手 · Fubon Slugger</cite>
+        <cite>My易經 · My I Ching</cite>
       </blockquote>
 
       <section>
@@ -433,7 +436,7 @@ async function renderResult(token, id) {
           <details class="card" open>
             <summary>六爻擲錢紀錄</summary>
             <div class="details-body">
-              <table class="toss-table">
+              <div class="table-wrap"><table class="toss-table">
                 <thead><tr><th>爻位</th><th>三錢結果</th><th>數值</th><th>爻性</th></tr></thead>
                 <tbody>${lines.map((l, i) => i).reverse().map(i => `
                   <tr class="${lines[i].changing ? 'changing' : ''}">
@@ -443,7 +446,7 @@ async function renderResult(token, id) {
                     <td>${LINE_KIND[lines[i].value]}</td>
                   </tr>`).join('')}
                 </tbody>
-              </table>
+              </table></div>
               <p class="toss-foot">六爻值（初→上）：${lines.map(l => l.value).join(' ')}</p>
             </div>
           </details>
@@ -542,8 +545,18 @@ async function renderHistory(token) {
       <p class="fine">歷史紀錄保存在此瀏覽器；點擊紀錄會重開原卦例。</p>
     </section>`)
 
-  node.querySelector('[data-clear]')?.addEventListener('click', () => {
-    if (!confirm('確定要清空全部歷史紀錄？此動作無法復原。')) return
+  // 頁內二次確認：第一次點擊改為「確定清空？」，3 秒內再點一次才清空
+  const clearBtn = node.querySelector('[data-clear]')
+  clearBtn?.addEventListener('click', () => {
+    if (!clearBtn.classList.contains('armed')) {
+      clearBtn.classList.add('armed')
+      clearBtn.textContent = '確定清空？再點一次'
+      setTimeout(() => {
+        clearBtn.classList.remove('armed')
+        clearBtn.textContent = '清空紀錄'
+      }, 3000)
+      return
+    }
     saveHistory([])
     toast('已清空歷史紀錄')
     route()
@@ -573,7 +586,9 @@ function setupChrome() {
     })
   }
 
-  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  // 單檔版（artifact）沒有 service-worker.js，且其執行環境不支援 Service Worker
+  const bundled = document.getElementById('hexagrams-data')
+  if (!bundled && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {})
   }
 }

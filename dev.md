@@ -27,6 +27,14 @@
 
 起一個靜態伺服器（例如 `npx serve web` 或 `python3 -m http.server -d web`）。無編譯步驟；以 `file://` 直接開啟會因 ES module 與 `fetch` 限制而失敗。
 
+### 單檔版（Claude artifact）
+
+```bash
+node scripts/build-artifact.mjs [輸出路徑]   # 預設輸出 dist/my-iching.html
+```
+
+把 `/web` 的 CSS、JS 與卦象資料全部內嵌成一個 HTML 片段（不含 `<html>`/`<head>`/`<body>`，由 artifact 發布時包上）。單檔版不註冊 Service Worker。
+
 ### TUI
 
 ```bash
