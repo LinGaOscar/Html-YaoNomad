@@ -1144,24 +1144,33 @@ details.card[open] > summary { border-bottom: 1px solid var(--line-soft); }
 .dex-name { font-size: 0.78rem; letter-spacing: 0.04em; line-height: 1.3; }
 .dex-count { position: absolute; top: 4px; right: 6px; font-size: 0.7rem; color: var(--gold); font-variant-numeric: tabular-nums; }
 
-/* ===== 自訂六事 ===== */
-.items-form { display: flex; flex-direction: column; gap: 10px; }
-.item-row {
-  display: grid;
-  grid-template-columns: 2em minmax(0, 1fr);
-  align-items: center;
-  gap: 8px 10px;
-  padding: 10px 12px;
-  background: var(--card);
-  border: 1px solid var(--line-soft);
+/* ===== 六事樣板 ===== */
+.tpl-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 900px) { .tpl-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.tpl {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
   border-radius: 4px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s;
 }
-.item-no { grid-row: span 2; text-align: center; font-family: var(--serif); font-size: 1.2rem; color: var(--gold); }
-@media (min-width: 600px) {
-  .item-row { grid-template-columns: 2em minmax(0, 1fr) minmax(0, 1fr); }
-  .item-no { grid-row: auto; }
-}
-.item-row input, .item-row select {
+.tpl:hover { border-color: var(--gold); transform: translateY(-2px); }
+.tpl b { font-size: 1.1rem; letter-spacing: 0.12em; }
+.tpl small { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+.tpl.on { border-color: var(--gold); background: var(--gold-soft); box-shadow: 0 0 0 1px var(--gold); }
+.tpl.on b::after { content: " ✓"; color: var(--gold); }
+.slots { display: grid; gap: 10px; }
+@media (min-width: 600px) { .slots { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.slot { display: grid; grid-template-columns: 4em minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 12px; background: var(--card); border: 1px solid var(--line-soft); border-radius: 4px; }
+.slot label { color: var(--gold); letter-spacing: 0.1em; font-size: 0.9rem; }
+.slot select {
   width: 100%;
   min-height: 40px;
   padding: 6px 10px;
@@ -1171,14 +1180,9 @@ details.card[open] > summary { border-bottom: 1px solid var(--line-soft); }
   color: var(--text);
   font: inherit;
 }
-.form-error { color: var(--bad); font-size: 0.9rem; }
-.form-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.type-guide { padding: 16px 18px; }
-.type-guide h2 { margin-bottom: 8px; font-size: 1rem; letter-spacing: 0.12em; }
-.type-guide dl { margin: 0; display: grid; gap: 6px; }
-.type-guide dl div { display: grid; grid-template-columns: 3em minmax(0, 1fr); gap: 8px; }
-.type-guide dt { color: var(--gold); letter-spacing: 0.1em; }
-.type-guide dd { margin: 0; color: var(--muted); }
+.danger-btn { color: var(--bad); }
+.danger-btn:hover, .danger-btn.armed { border-color: var(--bad); }
+.danger-btn.armed { background: var(--bad-soft); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 @media (prefers-reduced-motion: reduce) {

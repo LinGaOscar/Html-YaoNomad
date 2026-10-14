@@ -10,12 +10,14 @@ YaoNomad 是以《易經》三枚硬幣卜卦法為核心的多平台系統，�
 
 ### Web 介面結構
 
-- `main.js`：hash 路由與首頁、起卦動畫、歷史紀錄。路由：`#/` 首頁、`#/cast` 起卦、`#/r/<id>` 結果（`#/r/<id>/fb` 直接開應驗回饋）、`#/history`、`#/book` 我的卦簿、`#/settings` 自訂六事、`#v-…` 朋友分享（分享碼只用 `[A-Za-z0-9_-]`，artifact 連結的 hash 才帶得進來）
-- `result.js`：結果頁（自己的卦例與分享檢視）；`book.js`：卦簿（成就、準度、64 卦圖鑑）與自訂六事
-- `ui.js`：共用常數、格式化、`mount`、toast、localStorage 存取（歷史、自訂六事）
-- `activities.js`：六事提醒、小故事、SVG 循環動畫；`ink.js`：水墨粒子背景
+- `main.js`：hash 路由與首頁、起卦動畫、歷史紀錄。路由：`#/` 首頁、`#/cast` 起卦、`#/r/<id>` 結果（`#/r/<id>/fb` 直接開應驗回饋）、`#/history`、`#/book` 我的卦簿、`#/settings` 六事樣板、`#v-…` 朋友分享（分享碼只用 `[A-Za-z0-9_-]`，artifact 連結的 hash 才帶得進來）
+- `result.js`：結果頁（自己的卦例與分享檢視）；`book.js`：卦簿（成就、準度、64 卦圖鑑、重置）與六事樣板頁
+- `ui.js`：共用常數、格式化、`mount`、toast、localStorage 存取（歷史、六事選擇、卦簿起算點）
+- `activities.js`：事項池 `ITEMS`（代號 → 名稱、事類、提醒、小故事、印章文字）與樣板 `TEMPLATES`（工程師、行政、學生、生活），以及 SVG 循環動畫；`ink.js`：水墨粒子背景
+- 六事＝依事類 0–5 各選一個事項（`sel`，事項代號陣列）；樣板頁只能從事項池選，不能自由輸入。事項代號會存進紀錄與分享碼，不可更改；新增事項要補齊三種評等的提醒與故事
 - `web/core/progress.js`：今日一卦判定（`castKind`：當天第一卦 daily、換問題 new、同問題第二次 again、第三次起 profane）、連續天數、成就、準度；`web/core/share.js`：分享碼編解碼
-- 歷史紀錄只存爻值、硬幣、`question`、`items`（自訂六事，預設時省略）、`feedback`（應驗回饋），重開時以 `evaluate()` 重算；成就與圖鑑都由歷史即時推導，不另外儲存
+- 歷史紀錄只存爻值、硬幣、`question`、`sel`（預設工程師樣板時省略）、`feedback`（應驗回饋）；載入時由 `sel` 解出 `items` 供 `evaluate()` 重算，存檔時會去掉 `items`（舊版自由輸入的自訂紀錄帶 `items`，載入時會被清除）
+- 成就與圖鑑都由歷史即時推導，不另外儲存；「重置卦簿」只記下起算時間（`yaonomad.bookSince`），之後的卦例才計入卦簿，歷史紀錄保留
 - 畫面文字一律半形：`ui.js` 的 `hw()` 在顯示時把全形標點轉半形（`mount`、toast、複製文字都經過它），資料檔維持全形原文；`esc()` 會先轉換「」，避免轉出的引號破壞屬性
 
 線上部署（GitHub Pages）：https://lingaoscar.github.io/Html-YaoNomad/。本機開發環境設定見 `dev.md`。

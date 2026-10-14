@@ -6,7 +6,7 @@ import { fullName, TRIGRAMS } from './core/hexagrams.js'
 import { AFFINITY, LAUNCH, FRIDAY_PENALTY } from './core/scoring.js'
 import { castKind, evaluate, todayDaily } from './core/progress.js'
 import { encodeShare, decodeShare } from './core/share.js'
-import { TRAITS, relation, tipFor, storyFor, sceneFor } from './activities.js'
+import { TRAITS, relation, tipFor, storyFor, stampsOf, sceneFor, DEFAULT_SEL, resolveSel, selToCode, codeToSel } from './activities.js'
 import { inkBurst } from './ink.js'
 import {
   LINE_POS, LINE_KIND, COIN_FACE, LEVEL, KIND_LABEL, methodName, reduceMotion, loadHexagrams, hw, esc,
@@ -40,13 +40,16 @@ function readingHTML(title, hex, movingLines) {
     </article>`
 }
 
-/** 評分卡上的印章彩蛋 */
+/** 評分卡上的印章彩蛋，文字依事項而定 */
 function stampFor(s) {
-  if (s.type === LAUNCH && s.score < 10) return s.name === '程式上線' ? '封版' : '按兵不動'
-  if (s.type === ANALYZE && s.score >= 90) return s.name === '抓BUG' ? '除錯之神' : '明察秋毫'
-  if (s.friday) return '週五不部署'
+  const st = stampsOf(s)
+  if (s.type === LAUNCH && s.score < 10) return st.low || '封版'
+  if (s.type === ANALYZE && s.score >= 90) return st.high || '明察秋毫'
+  if (s.friday) return st.friday || '週五不部署'
   return null
 }
+
+const shareCode = record => encodeShare({ values: record.values, time: record.time, sel: selToCode(record.sel || DEFAULT_SEL) })
 
 /** 為什麼是這個分數：用上下卦的性質說明，再補上變卦、變爻與週五的影響 */
 function whyText(s, result) {
@@ -445,21 +448,22 @@ export async function renderResult(token, id, { focusFeedback = false } = {}) {
     hexagrams,
     focusFeedback,
     daily: kind === 'again' || kind === 'profane' ? todayDaily(history, record.time) : null,
-    code: encodeShare(record),
+    code: shareCode(record),
   })
 }
 
 /** 朋友分享的卦（不存進紀錄） */
 export async function renderShared(token, code) {
   const data = decodeShare(code)
-  if (!data) {
+  const sel = data && codeToSel(data.sel)
+  if (!sel) {
     toast('分享連結無效')
     location.replace('#/')
     return
   }
   const hexagrams = await loadHexagrams()
   if (isStale(token)) return
-  const record = { id: 'shared', time: data.time, method: 'coin', values: data.values, coins: null, items: data.items || undefined }
+  const record = { id: 'shared', time: data.time, method: 'coin', values: data.values, coins: null, sel, items: resolveSel(sel) }
   const ev = evaluate(hexagrams, record)
-  renderView({ ...ev, record, kind: 'shared', own: false, hexagrams, daily: null, code: encodeShare(record) })
+  renderView({ ...ev, record, kind: 'shared', own: false, hexagrams, daily: null, code: shareCode(record) })
 }

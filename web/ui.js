@@ -3,11 +3,10 @@
 /** 各畫面共用：常數、格式化、半形轉換、畫面掛載、提示、歷史與設定儲存 */
 
 import { TRIGRAMS } from './core/hexagrams.js'
-import { DEFAULT_ITEMS } from './core/scoring.js'
 import { ACHIEVEMENTS, summarize } from './core/progress.js'
-import { validItems } from './core/share.js'
+import { DEFAULT_SEL, validSel, resolveSel, templateOf } from './activities.js'
 
-export const VERSION = 'V3.02'
+export const VERSION = 'V3.03'
 export const LINE_POS = ['初爻', '二爻', '三爻', '四爻', '五爻', '上爻']
 export const LINE_KIND = { 6: '老陰（變）', 7: '少陽', 8: '少陰', 9: '老陽（變）' }
 export const COIN_FACE = { 2: '正', 3: '背' }
@@ -18,7 +17,10 @@ export const methodName = m => METHOD[m] || METHOD.coin
 const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六']
 
 const HISTORY_KEY = 'yaonomad.history'
-const ITEMS_KEY = 'yaonomad.items'
+const SEL_KEY = 'yaonomad.sel'
+const BOOK_SINCE_KEY = 'yaonomad.bookSince'
+/** 舊版自由輸入的自訂六事設定，已停用 */
+const OLD_ITEMS_KEY = 'yaonomad.items'
 const HISTORY_MAX = 200
 
 export const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)')
@@ -142,36 +144,44 @@ export async function copyToClipboard(text) {
  * @property {number[]} values - 六爻值，index 0 = 初爻
  * @property {number[][]|null} coins - 每爻三枚硬幣（2/3）；手動輸入時為 null
  * @property {string} [question] - 心中所問
- * @property {{name: string, type: number}[]} [items] - 起卦當時的自訂六事；預設六事時省略
+ * @property {string[]} [sel] - 起卦當時的六事（依事類排列的事項代號）；預設工程師樣板時省略
  * @property {(boolean|null)[]} [feedback] - 應驗回饋，index 同六事
+ * 載入後另有 items（由 sel 解出的 { id, name, type }），只存在記憶體，不寫回儲存
  */
+
+const isRecord = r => r && typeof r.id === 'string' && Array.isArray(r.values) && r.values.length === 6
 
 /** @returns {CastRecord[]} 由新至舊 */
 export function loadHistory() {
+  let list
   try {
-    const list = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]')
-    return Array.isArray(list)
-      ? list.filter(r => r && typeof r.id === 'string' && Array.isArray(r.values) && r.values.length === 6)
-        .map(r => (r.items && !validItems(r.items) ? { ...r, items: undefined } : r))
-      : []
+    list = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]')
   } catch {
     return []
   }
+  if (!Array.isArray(list)) return []
+  // 舊版自由輸入的自訂六事（紀錄裡存成 items）已停用：連同設定一次清除
+  if (list.some(r => r && 'items' in r)) {
+    list = list.filter(r => r && !('items' in r))
+    saveHistory(list)
+    try { localStorage.removeItem(OLD_ITEMS_KEY) } catch {}
+  }
+  return list.filter(isRecord).map(r => ({ ...r, items: resolveSel(r.sel) }))
 }
 
 export function saveHistory(list) {
   try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, HISTORY_MAX)))
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, HISTORY_MAX).map(({ items, ...r }) => r)))
   } catch {
     toast('無法保存紀錄（瀏覽器儲存空間不可用）')
   }
 }
 
 export function addRecord(method, values, coins, question = '') {
-  const items = loadItems()
+  const sel = loadSel()
   const record = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), time: Date.now(), method, values, coins }
   if (question.trim()) record.question = question.trim().slice(0, 40)
-  if (!isDefaultItems(items)) record.items = items
+  if (templateOf(sel) !== templateOf(DEFAULT_SEL)) record.sel = sel
   saveHistory([record, ...loadHistory()])
   return record
 }
@@ -180,25 +190,21 @@ export function updateRecord(id, patch) {
   saveHistory(loadHistory().map(r => (r.id === id ? { ...r, ...patch } : r)))
 }
 
-// ---------- 自訂六事 ----------
+// ---------- 六事樣板 ----------
 
-export const isDefaultItems = items =>
-  items.every((it, i) => it.name === DEFAULT_ITEMS[i].name && it.type === DEFAULT_ITEMS[i].type)
-
-export function loadItems() {
+/** 目前的六事：依事類排列的事項代號 */
+export function loadSel() {
   try {
-    const items = JSON.parse(localStorage.getItem(ITEMS_KEY) || 'null')
-    return validItems(items) ? items : DEFAULT_ITEMS
+    const sel = JSON.parse(localStorage.getItem(SEL_KEY) || 'null')
+    return validSel(sel) ? sel : DEFAULT_SEL
   } catch {
-    return DEFAULT_ITEMS
+    return DEFAULT_SEL
   }
 }
 
-/** items 為 null 時還原預設 */
-export function saveItems(items) {
+export function saveSel(sel) {
   try {
-    if (items === null) localStorage.removeItem(ITEMS_KEY)
-    else localStorage.setItem(ITEMS_KEY, JSON.stringify(items))
+    localStorage.setItem(SEL_KEY, JSON.stringify(sel))
     return true
   } catch {
     toast('無法保存設定（瀏覽器儲存空間不可用）')
@@ -206,9 +212,36 @@ export function saveItems(items) {
   }
 }
 
+// ---------- 卦簿 ----------
+
+/** 卦簿從這個時間點起算；重置卦簿只移動起點，歷史紀錄保留 */
+export function bookSince() {
+  try {
+    return Number(localStorage.getItem(BOOK_SINCE_KEY)) || 0
+  } catch {
+    return 0
+  }
+}
+
+export function resetBook() {
+  try {
+    localStorage.setItem(BOOK_SINCE_KEY, String(Date.now()))
+    return true
+  } catch {
+    toast('無法重置（瀏覽器儲存空間不可用）')
+    return false
+  }
+}
+
+/** 卦簿統計用的紀錄：重置之後的卦例 */
+export const bookRecords = () => {
+  const since = bookSince()
+  return loadHistory().filter(r => r.time >= since)
+}
+
 // ---------- 成就 ----------
 
-export const unlockedNow = hexagrams => summarize(hexagrams, loadHistory()).unlocked
+export const unlockedNow = hexagrams => summarize(hexagrams, bookRecords()).unlocked
 
 /** 比對動作前後的成就，有新解鎖就提示 */
 export function announceUnlocks(hexagrams, before) {

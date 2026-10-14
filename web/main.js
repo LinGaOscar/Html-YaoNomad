@@ -8,9 +8,10 @@ import { ACHIEVEMENTS, castKind, dayKey, evaluate, summarize, todayDaily } from 
 import { initInk, setInkMode, inkBurst, refreshColor } from './ink.js'
 import { renderResult, renderShared } from './result.js'
 import { renderBook, renderSettings, glyphHTML } from './book.js'
+import { resolveSel } from './activities.js'
 import {
   VERSION, LINE_POS, LINE_KIND, COIN_FACE, KIND_LABEL, methodName, loadHexagrams, hw, esc, formatDay, formatTime, sleep,
-  nextToken, isStale, mount, toast, loadHistory, saveHistory, addRecord, loadItems, unlockedNow, announceUnlocks,
+  nextToken, isStale, mount, toast, loadHistory, saveHistory, addRecord, loadSel, bookRecords, unlockedNow, announceUnlocks,
 } from './ui.js'
 
 const THEME_KEY = 'yaonomad.theme'
@@ -56,14 +57,14 @@ function feedbackNudge(history, now) {
 
 async function renderHome(token) {
   const history = loadHistory()
-  const items = loadItems()
+  const items = resolveSel(loadSel())
   const now = Date.now()
   const hexagrams = history.length ? await loadHexagrams() : null
   if (isStale(token)) return
 
   const daily = todayDaily(history, now)
   const dailyEv = daily ? evaluate(hexagrams, daily) : null
-  const stats = hexagrams ? summarize(hexagrams, history, now) : null
+  const stats = hexagrams ? summarize(hexagrams, bookRecords(), now) : null
   const nudge = hexagrams ? feedbackNudge(history, now) : null
   const nudgeEv = nudge ? evaluate(hexagrams, nudge.rec) : null
   const sep = '<span class="sep"> · </span>'
@@ -126,7 +127,7 @@ async function renderHome(token) {
         </nav>
       </div>
       <p class="six">${names.slice(0, 3).join(sep)}<span class="br"></span>${sep}${names.slice(3).join(sep)}
-        <a class="six-edit" href="#/settings">自訂六事</a></p>
+        <a class="six-edit" href="#/settings">六事樣板</a></p>
       <footer class="home-foot"><span>三錢六擲，由下成卦</span><span>本機運算 · 離線可用</span></footer>
       <span class="version">${VERSION}</span>
     </section>`)

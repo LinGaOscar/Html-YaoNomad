@@ -80,3 +80,9 @@ test('scoreActivities：週五發布類再扣 15 分，其他事類不變', () =
   assert.ok(fri[4].friday && !thu[4].friday)
   assert.deepStrictEqual(fri.filter((_, i) => i !== 4).map(s => s.score), thu.filter((_, i) => i !== 4).map(s => s.score))
 })
+
+test('scoreActivities：事項的其他欄位原樣帶到結果', () => {
+  const result = castFromLines(hexagrams, '', [7, 7, 7, 7, 7, 7])
+  const [s] = scoreActivities(result, { items: [{ id: 'exam', name: '考試', type: 2 }] })
+  assert.deepStrictEqual([s.id, s.name, s.type], ['exam', '考試', 2])
+})

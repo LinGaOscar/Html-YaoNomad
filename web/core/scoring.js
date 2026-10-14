@@ -51,14 +51,15 @@ const hexagramScore = (hexagram, type) => 0.6 * AFFINITY[hexagram.lower][type] +
  * 依卜卦結果為六事評分（規則見 core-spec/README.md「六事評分」）
  * @param {import('./models.js').CastResult} result
  * @param {{ items?: {name: string, type: number}[], date?: Date|null }} [options]
- *   items：要評分的事項，預設 DEFAULT_ITEMS；date：起卦時間，用於週五規則
+ *   items：要評分的事項，預設 DEFAULT_ITEMS，事項的其他欄位（如 id）原樣帶到結果；date：起卦時間，用於週五規則
  * @returns {ActivityScore[]}
  */
 export function scoreActivities(result, { items = DEFAULT_ITEMS, date = null } = {}) {
   const changing = result.lines.filter(l => l.changing).length
   const isFriday = date instanceof Date && date.getDay() === 5
 
-  return items.map(({ name, type }) => {
+  return items.map(item => {
+    const { type } = item
     const present = hexagramScore(result.present, type)
     const future = result.future ? hexagramScore(result.future, type) : null
     let score = spread(future === null ? present : 0.75 * present + 0.25 * future)
@@ -67,8 +68,7 @@ export function scoreActivities(result, { items = DEFAULT_ITEMS, date = null } =
     if (friday) score -= FRIDAY_PENALTY
     score = Math.max(0, Math.min(100, Math.round(score)))
     return {
-      name,
-      type,
+      ...item,
       score,
       present: Math.round(spread(present)),
       future: future === null ? null : Math.round(spread(future)),
