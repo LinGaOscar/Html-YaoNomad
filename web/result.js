@@ -1,0 +1,465 @@
+'use strict'
+
+/** 結果頁：自己的卦例（#/r/<id>）與朋友分享的卦（#v-...） */
+
+import { fullName, TRIGRAMS } from './core/hexagrams.js'
+import { AFFINITY, LAUNCH, FRIDAY_PENALTY } from './core/scoring.js'
+import { castKind, evaluate, todayDaily } from './core/progress.js'
+import { encodeShare, decodeShare } from './core/share.js'
+import { TRAITS, relation, tipFor, storyFor, sceneFor } from './activities.js'
+import { inkBurst } from './ink.js'
+import {
+  LINE_POS, LINE_KIND, COIN_FACE, LEVEL, KIND_LABEL, methodName, reduceMotion, loadHexagrams, hw, esc,
+  formatTime, formatDate, cnNum, trigramPair, isStale, mount, toast, copyToClipboard,
+  loadHistory, addRecord, updateRecord, unlockedNow, announceUnlocks,
+} from './ui.js'
+
+const ANALYZE = 2
+
+// ---------- 片段 ----------
+
+function hexHTML(lines, highlight, delay = 0) {
+  return `<div class="hex" role="img" aria-label="六爻圖">${lines.map((l, i) => {
+    const style = `style="animation-delay:${delay + i * 0.08}s"`
+    const bars = l.yin ? `<i ${style}></i><i ${style}></i>` : `<i ${style}></i>`
+    return `<div class="hex-line${highlight && l.changing ? ' changing' : ''}">${bars}</div>`
+  }).join('')}</div>`
+}
+
+function readingHTML(title, hex, movingLines) {
+  return `
+    <article class="card reading">
+      <div class="sec-head"><h2>${title}</h2><span>第${cnNum(hex.number)}卦 · ${esc(hex.name)}</span></div>
+      <dl>
+        <dt>卦辭</dt><dd class="classic">${esc(hex.name)}：${esc(hex.judgment)}</dd>
+        <dt>象曰</dt><dd class="classic">${esc(hex.image)}</dd>
+        <dt>白話</dt><dd>${esc(hex.plain)}</dd>
+        <dt>職場</dt><dd>${esc(hex.advice)}</dd>
+        ${movingLines.length ? `<dt>動爻</dt><dd class="moving">${movingLines.map(t => `<p>${esc(t)}</p>`).join('')}</dd>` : ''}
+      </dl>
+    </article>`
+}
+
+/** 評分卡上的印章彩蛋 */
+function stampFor(s) {
+  if (s.type === LAUNCH && s.score < 10) return s.name === '程式上線' ? '封版' : '按兵不動'
+  if (s.type === ANALYZE && s.score >= 90) return s.name === '抓BUG' ? '除錯之神' : '明察秋毫'
+  if (s.friday) return '週五不部署'
+  return null
+}
+
+/** 為什麼是這個分數：用上下卦的性質說明，再補上變卦、變爻與週五的影響 */
+function whyText(s, result) {
+  const part = (label, code) => {
+    const t = TRIGRAMS[code]
+    return `${label}${t.name}為${t.image}，主${TRAITS[code]}，對${s.name}${relation(AFFINITY[code][s.type])}`
+  }
+  const { present, future, lines } = result
+  let text = present.upper === present.lower
+    ? `本卦${fullName(present)}，${part('上下皆', present.lower)}。`
+    : `本卦${fullName(present)}：${part('下卦', present.lower)}；${part('上卦', present.upper)}。`
+  if (future) {
+    const diff = s.future - s.present
+    const move = diff > 3 ? '把分數往上帶' : diff < -3 ? '把分數往下拉' : '對分數影響不大'
+    text += `變卦${fullName(future)}佔四分之一，${move}。`
+  }
+  const moving = lines.filter(l => l.changing).length
+  if (s.type === LAUNCH && moving) text += `另有 ${moving} 個變爻，局勢未定，再扣 ${moving * 4} 分。`
+  if (s.friday) text += `起卦日是週五，古訓「週五不部署」，再扣 ${FRIDAY_PENALTY} 分。`
+  return text
+}
+
+function detailHTML(s, result) {
+  const story = storyFor(s, s.level)
+  return `
+    <div class="sd-scene">${sceneFor(s)}</div>
+    <div class="sd-text">
+      <div class="sd-head">
+        <h3>${esc(s.name)} <b>${s.score}</b><small>/100 · ${LEVEL[s.level]}</small></h3>
+        <button class="sd-close" type="button" aria-label="收起說明">×</button>
+      </div>
+      <p class="sd-label">卦象白話</p>
+      <p>${esc(whyText(s, result))}</p>
+      ${story
+        ? `<p class="sd-label">小故事</p><p class="sd-story">${esc(story)}</p>`
+        : `<p class="sd-label">建議</p><p>${esc(tipFor(s, s.level))}</p>`}
+    </div>`
+}
+
+/** 六事卡片點擊展開：說明面板插在該卡所在列的下方，橫跨整列 */
+function setupScoreDetail(grid, scores, result) {
+  const cards = [...grid.querySelectorAll('.score')]
+  const panel = document.createElement('div')
+  panel.id = 'score-detail'
+  panel.setAttribute('role', 'region')
+  let openIdx = -1
+
+  const place = () => {
+    if (openIdx < 0) return
+    const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length || 1
+    const end = Math.min(cards.length - 1, Math.floor(openIdx / cols) * cols + cols - 1)
+    if (panel.previousElementSibling !== cards[end]) cards[end].after(panel)
+    const c = cards[openIdx].getBoundingClientRect()
+    const g = grid.getBoundingClientRect()
+    panel.style.setProperty('--notch', `${c.left - g.left + c.width / 2}px`)
+  }
+
+  const close = () => {
+    const card = cards[openIdx]
+    openIdx = -1
+    panel.remove()
+    cards.forEach(c => { c.classList.remove('open'); c.setAttribute('aria-expanded', 'false') })
+    card?.focus()
+  }
+
+  const open = i => {
+    if (openIdx === i) return close()
+    openIdx = i
+    cards.forEach((c, k) => { c.classList.toggle('open', k === i); c.setAttribute('aria-expanded', String(k === i)) })
+    panel.className = `score-detail ${scores[i].level}`
+    panel.setAttribute('aria-label', `${scores[i].name}說明`)
+    panel.innerHTML = hw(detailHTML(scores[i], result))
+    panel.querySelector('.sd-close').addEventListener('click', close)
+    panel.remove() // 重新插入以重播進場動畫
+    place()
+    panel.scrollIntoView({ block: 'nearest', behavior: reduceMotion.matches ? 'auto' : 'smooth' })
+  }
+
+  cards.forEach((c, i) => c.addEventListener('click', () => open(i)))
+  panel.addEventListener('keydown', e => { if (e.key === 'Escape') close() })
+  new ResizeObserver(place).observe(grid)
+}
+
+function shareURL(code) {
+  const base = document.getElementById('hexagrams-data')?.dataset.shareBase || location.href.split('#')[0]
+  return `${base}#${code}`
+}
+
+function copyText(ctx) {
+  const { record, result, scores, kind } = ctx
+  const { present, future, lines } = result
+  const changing = lines.map((l, i) => (l.changing ? LINE_POS[i] : null)).filter(Boolean)
+  const out = [
+    `My易經 · ${KIND_LABEL[kind]}`,
+    kind === 'shared' ? `起卦日期：${formatDate(record.time)}` : `起卦時間：${formatTime(record.time)}（${methodName(record.method)}）`,
+  ]
+  if (record.question) out.push(`所問：${record.question}`)
+  out.push(
+    `本卦：第${present.number}卦 ${fullName(present)}（${trigramPair(present)}）`,
+    future ? `變卦：第${future.number}卦 ${fullName(future)}（變爻：${changing.join('、')}）` : '變卦：無（六爻皆靜）',
+    `六爻（初→上）：${lines.map(l => l.value).join(' ')}`,
+    '',
+    `今日一句：${present.motto}`,
+    '',
+    '六事評分：',
+    ...scores.map(s => `  ${s.name} ${s.score}（${LEVEL[s.level]}）${stampFor(s) ? `［${stampFor(s)}］` : ''}`),
+    '',
+    `本卦卦辭：${present.name}：${present.judgment}`,
+    `象曰：${present.image}`,
+    `白話：${present.plain}`,
+    `職場：${present.advice}`,
+  )
+  const moving = lines.map((l, i) => (l.changing ? present.lines[i] : null)).filter(Boolean)
+  if (moving.length) out.push(`動爻：${moving.join(' ')}`)
+  if (future) {
+    out.push('', `變卦卦辭：${future.name}：${future.judgment}`, `象曰：${future.image}`, `白話：${future.plain}`, `職場：${future.advice}`)
+  }
+  out.push('', `分享連結：${shareURL(ctx.code)}`)
+  return hw(out.join('\n'))
+}
+
+function omenHTML(kind, daily) {
+  if (kind === 'shared') {
+    return `
+      <aside class="omen card shared">
+        <span class="omen-seal" aria-hidden="true">贈</span>
+        <div><p>這是朋友分享給你的一卦，不會存進你的紀錄。</p><p><a href="#/cast">我也來起一卦 →</a></p></div>
+      </aside>`
+  }
+  if (kind !== 'again' && kind !== 'profane') return ''
+  const link = daily ? ` <a href="#/r/${esc(daily.id)}">看今日一卦 →</a>` : ''
+  return `
+    <aside class="omen card ${kind}">
+      <span class="omen-seal" aria-hidden="true">${kind === 'profane' ? '瀆' : '再'}</span>
+      <div>
+        <p class="omen-quote">初筮告，再三瀆，瀆則不告。<cite>《蒙》卦辭</cite></p>
+        <p>${kind === 'again'
+          ? '同一件事今天已經問過了。第一次的答案最誠懇，以今日一卦為準。'
+          : '同一件事問到第三次，易經說問太多就不告訴你了，這卦當作娛樂就好。'}${link}</p>
+      </div>
+    </aside>`
+}
+
+function feedbackHTML(scores, feedback, open) {
+  const rated = feedback.filter(v => typeof v === 'boolean').length
+  return `
+    <details class="card" id="feedback"${open ? ' open' : ''}>
+      <summary>應驗回饋 <span class="fb-count">${rated}/${scores.length}</span></summary>
+      <div class="details-body">
+        <p>事情過後回來勾一下：這些評分準不準？會統計到「我的卦簿」。</p>
+        <ul class="fb-list">${scores.map((s, i) => `
+          <li>
+            <span class="fb-name">${esc(s.name)}</span>
+            <span class="fb-score ${s.level}">${s.score}</span>
+            <span class="fb-btns" role="group" aria-label="${esc(s.name)}準不準">
+              <button type="button" class="fb-btn hit" data-i="${i}" data-v="1" aria-pressed="${feedback[i] === true}">準</button>
+              <button type="button" class="fb-btn miss" data-i="${i}" data-v="0" aria-pressed="${feedback[i] === false}">不準</button>
+            </span>
+          </li>`).join('')}
+        </ul>
+      </div>
+    </details>`
+}
+
+// ---------- 主畫面 ----------
+
+/**
+ * @param {object} ctx
+ * @param {'daily'|'new'|'again'|'profane'|'shared'} ctx.kind
+ * @param {import('./ui.js').CastRecord} ctx.record
+ * @param {boolean} ctx.own - 自己的紀錄（可回饋、可手動成卦）
+ */
+function renderView(ctx) {
+  const { record, result, scores, kind, own, daily, hexagrams } = ctx
+  const { present, future, lines } = result
+  const changingIdx = lines.map((l, i) => (l.changing ? i : -1)).filter(i => i >= 0)
+  const futureLines = lines.map(l => ({ yin: l.changing ? !l.yin : l.yin, changing: false }))
+  const feedback = Array.isArray(record.feedback) ? record.feedback : []
+  const isPastDay = new Date(record.time).toDateString() !== new Date().toDateString()
+  const openFeedback = own && (ctx.focusFeedback || (isPastDay && !feedback.some(v => typeof v === 'boolean')))
+
+  const good = scores.filter(s => s.level === 'good').sort((a, b) => b.score - a.score)
+  const bad = scores.filter(s => s.level === 'bad').sort((a, b) => a.score - b.score)
+  const fair = scores.length - good.length - bad.length
+  const listText = (arr, cls = '') => (arr.length
+    ? arr.map(s => `<span class="nw"><b class="${cls}">${esc(s.name)}</b>（${s.score}）</span>`).join(' · ')
+    : '—')
+  const meta = kind === 'shared' ? '分享' : methodName(record.method)
+
+  const node = mount(`
+    <section class="result">
+      <div class="topbar"><a href="#/">← 返回首頁</a><span>${meta}${changingIdx.length ? ` · ${changingIdx.length} 爻動` : ' · 無動爻'}</span></div>
+
+      <header class="r-head">
+        <div>
+          <p class="kicker">${KIND_LABEL[kind]}</p>
+          <h1>${esc(fullName(present))}</h1>
+          ${record.question ? `<p class="ask-line">所問：${esc(record.question)}</p>` : ''}
+          <p class="sub">${kind === 'shared' ? `起卦日期：${formatDate(record.time)}` : `起卦時間：${formatTime(record.time)}`}</p>
+        </div>
+        <div class="no-box">第<b>${present.number}</b>卦</div>
+      </header>
+
+      ${omenHTML(kind, daily)}
+
+      <blockquote class="motto">
+        <p class="kicker">今日一句</p>
+        <p class="motto-text">${esc(present.motto)}</p>
+        <cite>My易經 · My I Ching</cite>
+      </blockquote>
+
+      <section>
+        <div class="sec-head"><h2>六事評分</h2><span>宜 ${good.length} · 平 ${fair} · 忌 ${bad.length}</span></div>
+        <p class="summary">宜：${listText(good)}<br>忌：${listText(bad, 'bad')}</p>
+        <div class="score-grid">
+          ${scores.map((s, i) => {
+            const stamp = stampFor(s)
+            return `
+            <button class="score ${s.level}" type="button" aria-expanded="false" aria-controls="score-detail" style="animation-delay:${0.1 + i * 0.07}s">
+              <span class="score-name">${esc(s.name)}</span>
+              <span class="chip">${LEVEL[s.level]}</span>
+              <span class="num"><b>${s.score}</b><small>/100</small></span>
+              <span class="meter" aria-hidden="true"><i style="width:${s.score}%"></i></span>
+              <span class="mix">本卦 ${s.present} · ${s.future === null ? '無變卦' : `變卦 ${s.future}`}</span>
+              <span class="tip">${esc(tipFor(s, s.level))}</span>
+              <span class="more" aria-hidden="true">${storyFor(s, s.level) ? '看故事' : '看說明'}</span>
+              ${stamp ? `<span class="stamp${stamp.length > 3 ? ' long' : ''}">${stamp}</span>` : ''}
+            </button>`
+          }).join('')}
+        </div>
+        <p class="fine note">點任一項可展開白話說明與小故事。分數依本卦（75%）與變卦（25%）上下卦的取象計算，變爻越多、遇上週五都不利發布；僅供參考，請依實際情況判斷。</p>
+      </section>
+
+      <div class="r-grid">
+        <div class="r-main">
+          <figure class="card figure">
+            <div class="fig-row">
+              <div class="fig-hex">
+                <span class="fig-label">本卦</span>
+                ${hexHTML(lines, true, 0.2)}
+                <span class="fig-name">${esc(fullName(present))}</span>
+                <span class="fig-sub">${trigramPair(present)}</span>
+              </div>
+              ${future ? `
+              <span class="fig-arrow" aria-label="之">之</span>
+              <div class="fig-hex">
+                <span class="fig-label">變卦</span>
+                ${hexHTML(futureLines, false, 0.8)}
+                <span class="fig-name">${esc(fullName(future))}</span>
+                <span class="fig-sub">${trigramPair(future)}</span>
+              </div>` : ''}
+            </div>
+            <figcaption class="figcap">${changingIdx.length
+              ? `變爻：${changingIdx.map(i => LINE_POS[i]).join('、')} · 金色為變爻，由下往上讀卦`
+              : '六爻皆靜，無變卦 · 由下往上讀卦'}</figcaption>
+          </figure>
+
+          ${readingHTML('本卦解析', present, changingIdx.map(i => present.lines[i]))}
+          ${future
+            ? readingHTML('變卦解析', future, [])
+            : `<article class="card reading"><div class="sec-head"><h2>變卦解析</h2><span>無</span></div>
+                <dl><dd>六爻皆靜，沒有變卦。以本卦卦辭為主：事態穩定，照目前的方向走即可。</dd></dl></article>`}
+        </div>
+
+        <aside class="r-side">
+          ${own ? feedbackHTML(scores, feedback, openFeedback) : ''}
+
+          <details class="card"${openFeedback ? '' : ' open'}>
+            <summary>六爻擲錢紀錄</summary>
+            <div class="details-body">
+              <div class="table-wrap"><table class="toss-table">
+                <thead><tr><th>爻位</th><th>三錢結果</th><th>數值</th><th>爻性</th></tr></thead>
+                <tbody>${[5, 4, 3, 2, 1, 0].map(i => `
+                  <tr class="${lines[i].changing ? 'changing' : ''}">
+                    <td>${LINE_POS[i]}</td>
+                    <td>${Array.isArray(record.coins?.[i]) ? record.coins[i].map(v => COIN_FACE[v] ?? '?').join(' · ') : '—'}</td>
+                    <td>${lines[i].value}</td>
+                    <td>${LINE_KIND[lines[i].value]}</td>
+                  </tr>`).join('')}
+                </tbody>
+              </table></div>
+              <p class="toss-foot">六爻值（初→上）：${lines.map(l => l.value).join(' ')}</p>
+            </div>
+          </details>
+
+          <details class="card">
+            <summary>本卦六爻爻辭</summary>
+            <div class="details-body">
+              <ol class="yao-list">${[5, 4, 3, 2, 1, 0].map(i =>
+                `<li class="${lines[i].changing ? 'changing' : ''}">${esc(present.lines[i])}</li>`).join('')}</ol>
+            </div>
+          </details>
+
+          ${own ? `
+          <details class="card">
+            <summary>手動輸入六爻</summary>
+            <div class="details-body">
+              <form class="manual">
+                <p>自己擲了硬幣？由上爻往下填入爻值，即可成卦並存入紀錄。</p>
+                ${[5, 4, 3, 2, 1, 0].map(i => `
+                  <label>${LINE_POS[i]}
+                    <select name="l${i}" id="manual-l${i}">${[7, 8, 9, 6].map(v =>
+                      `<option value="${v}"${lines[i].value === v ? ' selected' : ''}>${v} · ${LINE_KIND[v]}</option>`).join('')}
+                    </select>
+                  </label>`).join('')}
+                <button class="btn" type="submit">以此六爻成卦</button>
+              </form>
+            </div>
+          </details>` : ''}
+
+          <details class="card">
+            <summary>起卦方法說明</summary>
+            <div class="details-body">
+              <p>三枚硬幣同擲，正面（字面）記 2、背面記 3，加總得 6、7、8、9。</p>
+              <p>6 老陰、9 老陽為變爻，會陰陽互換形成變卦；7 少陽、8 少陰不變。</p>
+              <p>共擲六次，由下往上排成六爻，得本卦；有變爻再得變卦。</p>
+            </div>
+          </details>
+        </aside>
+      </div>
+
+      <div class="r-actions">
+        <p class="fine hint">${own ? '每次起卦都會自動保存到歷史紀錄。' : '分享連結只帶六爻與日期，打開的人看到的是同一卦。'}</p>
+        <button class="btn primary" type="button" data-share>分享連結</button>
+        <button class="btn" type="button" data-copy>複製完整卦象</button>
+        <a class="btn" href="#/cast">${own ? '再起一卦' : '我也起一卦'}</a>
+        <a class="push" href="#/history">查看歷史紀錄 →</a>
+      </div>
+      <p class="fine">卦象由本機亂數產生，僅供娛樂與自省，不構成任何決策建議。</p>
+    </section>`)
+
+  setupScoreDetail(node.querySelector('.score-grid'), scores, result)
+
+  node.querySelector('[data-share]').addEventListener('click', async () => {
+    await copyToClipboard(shareURL(ctx.code))
+    toast('已複製分享連結')
+  })
+  node.querySelector('[data-copy]').addEventListener('click', async () => {
+    await copyToClipboard(copyText(ctx))
+    toast('已複製完整卦象')
+  })
+
+  if (!own) return
+
+  node.querySelector('.manual').addEventListener('submit', e => {
+    e.preventDefault()
+    const form = new FormData(e.currentTarget)
+    const values = [0, 1, 2, 3, 4, 5].map(i => Number(form.get(`l${i}`)))
+    const before = unlockedNow(hexagrams)
+    const rec = addRecord('manual', values, null, record.question || '')
+    inkBurst(innerWidth / 2, innerHeight * 0.35, 1)
+    location.hash = `#/r/${rec.id}`
+    announceUnlocks(hexagrams, before)
+  })
+
+  const fb = [...feedback]
+  const fbBox = node.querySelector('#feedback')
+  fbBox.addEventListener('click', e => {
+    const btn = e.target.closest('.fb-btn')
+    if (!btn) return
+    const i = Number(btn.dataset.i)
+    const v = btn.dataset.v === '1'
+    fb[i] = fb[i] === v ? null : v
+    const before = unlockedNow(hexagrams)
+    updateRecord(record.id, { feedback: fb })
+    fbBox.querySelectorAll(`.fb-btn[data-i="${i}"]`).forEach(b => b.setAttribute('aria-pressed', String(fb[i] === (b.dataset.v === '1'))))
+    fbBox.querySelector('.fb-count').textContent = `${fb.filter(x => typeof x === 'boolean').length}/${scores.length}`
+    announceUnlocks(hexagrams, before)
+  })
+  if (ctx.focusFeedback) fbBox.scrollIntoView({ block: 'center', behavior: reduceMotion.matches ? 'auto' : 'smooth' })
+}
+
+/** 自己的卦例 */
+export async function renderResult(token, id, { focusFeedback = false } = {}) {
+  const history = loadHistory()
+  const record = history.find(r => r.id === id)
+  if (!record) {
+    toast('找不到這則卦例')
+    location.replace('#/')
+    return
+  }
+  const hexagrams = await loadHexagrams()
+  if (isStale(token)) return
+  const ev = evaluate(hexagrams, record)
+  if (!ev) {
+    toast('這則卦例資料有誤')
+    location.replace('#/')
+    return
+  }
+  const kind = castKind(history, record)
+  renderView({
+    ...ev,
+    record,
+    kind,
+    own: true,
+    hexagrams,
+    focusFeedback,
+    daily: kind === 'again' || kind === 'profane' ? todayDaily(history, record.time) : null,
+    code: encodeShare(record),
+  })
+}
+
+/** 朋友分享的卦（不存進紀錄） */
+export async function renderShared(token, code) {
+  const data = decodeShare(code)
+  if (!data) {
+    toast('分享連結無效')
+    location.replace('#/')
+    return
+  }
+  const hexagrams = await loadHexagrams()
+  if (isStale(token)) return
+  const record = { id: 'shared', time: data.time, method: 'coin', values: data.values, coins: null, items: data.items || undefined }
+  const ev = evaluate(hexagrams, record)
+  renderView({ ...ev, record, kind: 'shared', own: false, hexagrams, daily: null, code: encodeShare(record) })
+}

@@ -1,24 +1,31 @@
 #!/usr/bin/env node
 // 將 /web 打包成單一 HTML 片段（CSS、JS、卦象資料全部內嵌），供發布為 Claude artifact。
 // artifact 發布時會自動包上 <!doctype>/<head>/<body>，因此輸出不含這些標籤。
-// 用法：node scripts/build-artifact.mjs [輸出路徑，預設 dist/my-iching.html]
+// 用法：node scripts/build-artifact.mjs [輸出路徑，預設 dist/my-iching.html] [--share-base <artifact 網址>]
+// --share-base：分享連結的基底網址；artifact 內無法得知自己的公開網址，需在打包時指定
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const web = join(dirname(fileURLToPath(import.meta.url)), '..', 'web')
-const out = process.argv[2] || join(web, '..', 'dist', 'my-iching.html')
+const args = process.argv.slice(2)
+const baseAt = args.indexOf('--share-base')
+const shareBase = baseAt >= 0 ? args.splice(baseAt, 2)[1] : ''
+const out = args[0] || join(web, '..', 'dist', 'my-iching.html')
 const read = p => readFileSync(join(web, p), 'utf8')
 
 // 依相依順序排列；每個模組包成 IIFE，避免頂層名稱互相衝突
-const MODULES = ['core/hexagrams.js', 'core/casting.js', 'core/scoring.js', 'ink.js', 'activities.js', 'main.js']
+const MODULES = [
+  'core/hexagrams.js', 'core/casting.js', 'core/scoring.js', 'core/progress.js', 'core/share.js',
+  'ink.js', 'activities.js', 'ui.js', 'result.js', 'book.js', 'main.js',
+]
 
 function wrapModule(path) {
   const exported = []
   let src = read(path)
     .replace(/^import \{([^}]+)\} from '([^']+)'\s*$/gm,
       (_, names, from) => `const {${names}} = __modules['${basename(from, '.js')}']`)
-    .replace(/^export (function|const|let) (\w+)/gm, (_, kw, id) => {
+    .replace(/^export (async function|function|const|let) (\w+)/gm, (_, kw, id) => {
       exported.push(id)
       return `${kw} ${id}`
     })
@@ -50,7 +57,7 @@ ${read('styles.css')}
 </style>
 ${themeScript}
 ${body.trim()}
-<script type="application/json" id="hexagrams-data">${data}</script>
+<script type="application/json" id="hexagrams-data"${shareBase ? ` data-share-base="${shareBase.replace(/"/g, '')}"` : ''}>${data}</script>
 <script type="module">
 ${bundle}
 </script>

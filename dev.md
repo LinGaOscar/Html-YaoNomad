@@ -13,7 +13,10 @@
   core/             核心邏輯（castHexagram、hexagrams lookup、型別定義），無 UI 依賴
   data/             hexagrams.json 副本（從 core-spec 手動同步）
   index.html        外框（標題列、粒子畫布）
-  main.js           hash 路由與四個畫面：首頁、起卦動畫、結果、歷史紀錄
+  main.js           hash 路由、首頁、起卦動畫、歷史紀錄
+  result.js         結果頁（自己的卦例、朋友分享）
+  book.js           我的卦簿、自訂六事
+  ui.js             共用工具與 localStorage 存取
   ink.js            水墨粒子背景（純視覺）
   activities.js     六事展開說明：小故事、八卦性質、SVG 循環動畫
   styles.css        色票與版面（深淺色）
@@ -31,10 +34,10 @@
 ### 單檔版（Claude artifact）
 
 ```bash
-node scripts/build-artifact.mjs [輸出路徑]   # 預設輸出 dist/my-iching.html
+node scripts/build-artifact.mjs [輸出路徑] [--share-base <artifact 網址>]   # 預設輸出 dist/my-iching.html
 ```
 
-把 `/web` 的 CSS、JS 與卦象資料全部內嵌成一個 HTML 片段（不含 `<html>`/`<head>`/`<body>`，由 artifact 發布時包上）。單檔版不註冊 Service Worker。
+把 `/web` 的 CSS、JS 與卦象資料全部內嵌成一個 HTML 片段（不含 `<html>`/`<head>`/`<body>`，由 artifact 發布時包上）。單檔版不註冊 Service Worker。artifact 內無法得知自己的公開網址，分享連結的基底要用 `--share-base` 指定（目前為 https://claude.ai/artifact/5spvV1jA7SNqdPLSfsKrdG）。新增 `web/*.js` 模組時，要同步加進腳本的 `MODULES`（依相依順序）與 `service-worker.js` 的 `ASSETS`。
 
 ### TUI
 
@@ -51,7 +54,7 @@ node --test web/core/*.test.js                                          # 全部
 node --test --test-name-pattern="<測試名稱>" web/core/casting.test.js  # 執行單一測試
 ```
 
-目前僅 `web/core/` 有測試（`casting.test.js`、`hexagrams.test.js`、`scoring.test.js`）；`tui-js/main.js` 與 Web 介面沒有自動化測試，需手動執行驗證。
+目前僅 `web/core/` 有測試（`casting`、`hexagrams`、`scoring`、`progress`、`share`）；`tui-js/main.js` 與 Web 介面沒有自動化測試，需手動執行驗證。
 
 ## 資料同步注意事項
 

@@ -5,8 +5,42 @@
  * 純介面內容，不影響評分邏輯。
  */
 
+import { ACTIVITIES } from './core/scoring.js'
+
+/** 預設六事在三種評等下的一句提醒 */
+export const TIPS = {
+  '開會': { good: '宜主動發言、拍板定案，共識來得快。', fair: '照議程走，避免臨時加題。', bad: '能改用文字溝通就別開，開了也易各說各話。' },
+  '撰寫報告': { good: '思路清晰，一氣呵成的好時機。', fair: '先列大綱再填內容，分段完成。', bad: '易卡文或寫偏，先蒐集資料，明天再修。' },
+  '抓BUG': { good: '直覺敏銳，追根究柢容易找到病灶。', fair: '照步驟重現、二分排查，耐心是關鍵。', bad: '容易越修越亂，先記錄現象、找人一起看。' },
+  '系統開發': { good: '適合開新功能、做架構設計。', fair: '以小步提交為主，邊做邊測。', bad: '不宜大改架構，先做規劃與文件。' },
+  '程式上線': { good: '時機成熟，照檢查清單穩穩發布。', fair: '可以上線，但先確認回滾方案。', bad: '能延則延；非上不可就縮小範圍、全程盯監控。' },
+  '餵魚/澆花': { good: '生活小事做起來特別療癒，順便放空。', fair: '記得就好，別忘了換水。', bad: '容易忘記或手滑，設個提醒吧。' },
+}
+
+/** 自訂事項依事類給的通用提醒，索引為事類代碼 */
+const TYPE_TIPS = [
+  { good: '適合溝通協調、主動表達，容易得到共識。', fair: '照步調溝通，先講重點。', bad: '容易誤會，重要的事先寫下來再說。' },
+  { good: '思緒清楚，適合動筆、整理想法。', fair: '分段進行，先列大綱。', bad: '容易卡住，先蒐集材料，晚點再寫。' },
+  { good: '眼光敏銳，適合深入研究、找出問題。', fair: '按步驟拆解，耐心排查。', bad: '容易鑽牛角尖，找人一起看。' },
+  { good: '適合開始新計畫、動手打造。', fair: '小步前進，邊做邊修。', bad: '不宜大動工，先把規劃做好。' },
+  { good: '時機成熟，適合推出、出發、做決定。', fair: '可以行動，但先準備退路。', bad: '能延則延，別在今天冒險。' },
+  { good: '適合照顧自己與身邊的人事物，順便放鬆。', fair: '照常就好，維持日常節奏。', bad: '容易疏忽，設個提醒。' },
+]
+
+/** 事項是否為預設六事之一（名稱與事類都相同） */
+export const isPreset = item => ACTIVITIES[item.type] === item.name
+
+/** 事項的一句提醒：預設六事用專屬內容，自訂事項用事類通用內容 */
+export const tipFor = (item, level) => (isPreset(item) ? TIPS[item.name][level] : TYPE_TIPS[item.type][level])
+
+/** 事項的小故事；自訂事項沒有故事 */
+export const storyFor = (item, level) => (isPreset(item) ? STORIES[item.name][level] : null)
+
+/** 事項的循環動畫：依事類 */
+export const sceneFor = item => SCENES[ACTIVITIES[item.type]]
+
 /** 每件事在三種評等下的小故事，主角是工程師「小易」 */
-export const STORIES = {
+const STORIES = {
   '開會': {
     good: '小易帶著一頁簡報走進會議室，十分鐘講完重點，主管點頭、同事補了兩個好點子，散會前分工就定好了。今天適合把卡住的議題端上桌。',
     fair: '會議照議程走，討論到一半有人丟出新議題，小易說「這個我們會後另開」，準時散會，不多也不少。守住議程就好。',
@@ -64,7 +98,7 @@ const LANTERN = `
   <circle class="flame" cy="17" r="2.2"/>`
 
 /** 各活動的循環動畫，viewBox 240×150 */
-export const SCENES = {
+const SCENES = {
   '開會': `
     <svg class="scene scene-meet" viewBox="0 0 240 150" role="img" aria-label="會議桌旁，四人輪流發言">
       <g class="p p1"><circle class="ink head" cx="76" cy="52" r="8"/><path class="ink" d="M62 74 Q76 58 90 74 Z"/></g>

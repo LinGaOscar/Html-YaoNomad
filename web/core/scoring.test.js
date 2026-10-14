@@ -63,3 +63,20 @@ test('castFromLines：爻值不合法時丟出錯誤', () => {
   assert.throws(() => castFromLines(hexagrams, '', [7, 7, 7]))
   assert.throws(() => castFromLines(hexagrams, '', [5, 7, 7, 7, 7, 7]))
 })
+
+test('scoreActivities：自訂事項依事類評分', () => {
+  const result = castFromLines(hexagrams, '', [7, 7, 7, 7, 7, 7])
+  const [read, run] = scoreActivities(result, { items: [{ name: '讀書', type: 1 }, { name: '跑步', type: 4 }] })
+  const base = scoreActivities(result)
+  assert.deepStrictEqual([read.name, read.type, read.score], ['讀書', 1, base[1].score])
+  assert.deepStrictEqual([run.name, run.type, run.score], ['跑步', 4, base[4].score])
+})
+
+test('scoreActivities：週五發布類再扣 15 分，其他事類不變', () => {
+  const result = castFromLines(hexagrams, '', [7, 7, 7, 7, 7, 7])
+  const thu = scoreActivities(result, { date: new Date(2026, 9, 15) })
+  const fri = scoreActivities(result, { date: new Date(2026, 9, 16) })
+  assert.strictEqual(fri[4].score, thu[4].score - 15)
+  assert.ok(fri[4].friday && !thu[4].friday)
+  assert.deepStrictEqual(fri.filter((_, i) => i !== 4).map(s => s.score), thu.filter((_, i) => i !== 4).map(s => s.score))
+})
