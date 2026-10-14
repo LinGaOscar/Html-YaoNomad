@@ -82,6 +82,13 @@
   color-scheme: dark;
 }
 
+/* 六事動畫的篆字：敬峰中山王篆子集（SIL OFL 1.1，見 fonts/README.md） */
+@font-face {
+  font-family: "YaoNomad Seal";
+  src: url("./fonts/yao-seal.woff2") format("woff2");
+  font-display: block;
+}
+
 /* ===== 基礎 ===== */
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -689,7 +696,17 @@ h1, h2, h3, p { margin: 0; }
   border-radius: 3px;
   overflow: hidden;
 }
+.sd-scene { position: relative; }
 .sd-scene canvas { display: block; width: 100%; height: 100%; }
+.seal-cap {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  font-size: 0.72rem;
+  color: var(--faint);
+  letter-spacing: 0.16em;
+  pointer-events: none;
+}
 .sd-text { min-width: 0; }
 .sd-text > p:not(.sd-label) { line-height: 1.8; letter-spacing: 0.03em; }
 .sd-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 4px; }

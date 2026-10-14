@@ -46,6 +46,10 @@ node tui-js/main.js
 node --test web/core/*.test.js
 ```
 
+## 字型授權
+
+六事動畫的篆字取自「敬峰中山王篆」（劉敬峰，[JFZSKSealScript](https://github.com/jeffi369/JFZSKSealScript)，SIL OFL 1.1），本專案只收錄代表字的子集，詳見 `web/fonts/`。
+
 ## 開發
 
 本機開發環境設定、測試指令細節見 [dev.md](./dev.md)；架構規則與慣例見 [CLAUDE.md](./CLAUDE.md)；設計脈絡見 [設計規格](./docs/superpowers/specs/2026-06-15-core-design.md)。

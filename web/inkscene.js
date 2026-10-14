@@ -2,7 +2,7 @@
 
 /**
  * 六事展開面板的水墨粒子循環動畫（通用）：
- * 墨點依「主分類」的方式流動 → 聚成事項的代表字 → 停留暈墨 → 化開，無縫循環。
+ * 墨點依「主分類」的方式流動 → 聚成事項代表字的篆字（中山王篆，金文）→ 停留暈墨 → 化開，無縫循環。
  * 每個墨點的位置都直接由時間算出（不累積狀態），所以每一圈完全相同，看起來像一張循環 GIF；
  * 新增事項只要給一個代表字。純視覺，與評分無關。
  */
@@ -10,7 +10,10 @@
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)')
 const PERIOD = 7000
 const TAU = Math.PI * 2
-const FONT = '"Noto Serif TC", "Songti TC", "PMingLiU", "MingLiU", "STSong", serif'
+const SEAL_FAMILY = 'YaoNomad Seal'
+const SEAL_FONT = `"${SEAL_FAMILY}"`
+/** 篆字字型載入失敗時，退回一般襯線字的繁體代表字 */
+const FALLBACK_FONT = '"Noto Serif TC", "Songti TC", "PMingLiU", "MingLiU", "STSong", serif'
 
 // 一圈的時間軸（0–1）：自由流動 → 聚字（GATHER）→ 停留 → 化開（RELEASE）→ 自由流動
 const GATHER = [0.26, 0.44]
@@ -45,26 +48,48 @@ function rng(seed) {
   }
 }
 
-/** 把代表字畫在離屏畫布上，取出筆畫上的點 */
-function sampleGlyph(ch, W, H) {
+/** 依字形的實際外框縮放並置中（篆字多半修長），回傳字級與基線位置 */
+function layout(g, ch, W, H, font) {
+  const probe = 100
+  g.font = `${probe}px ${font}`
+  const m = g.measureText(ch)
+  const left = m.actualBoundingBoxLeft || 0
+  const right = m.actualBoundingBoxRight || probe
+  const ascent = m.actualBoundingBoxAscent || probe * 0.8
+  const descent = m.actualBoundingBoxDescent || probe * 0.2
+  const scale = Math.min((W * 0.62) / (left + right), (H * 0.84) / (ascent + descent))
+  return {
+    font: `${probe * scale}px ${font}`,
+    size: probe * scale,
+    x: W / 2 - ((right - left) / 2) * scale,
+    y: H / 2 + ((ascent - descent) / 2) * scale,
+  }
+}
+
+function drawGlyph(g, ch, lay) {
+  g.font = lay.font
+  g.textAlign = 'left'
+  g.textBaseline = 'alphabetic'
+  g.fillText(ch, lay.x, lay.y)
+}
+
+/** 把字畫在離屏畫布上，取出筆畫上的點；篆字筆畫細，取點較密 */
+function sampleGlyph(ch, W, H, font) {
   const c = document.createElement('canvas')
   c.width = Math.max(1, Math.round(W))
   c.height = Math.max(1, Math.round(H))
   const g = c.getContext('2d', { willReadFrequently: true })
-  const size = Math.min(H * 0.78, W * 0.52)
-  g.font = `700 ${size}px ${FONT}`
-  g.textAlign = 'center'
-  g.textBaseline = 'middle'
-  g.fillText(ch, W / 2, H / 2 + size * 0.04)
+  const lay = layout(g, ch, W, H, font)
+  drawGlyph(g, ch, lay)
   const { data } = g.getImageData(0, 0, c.width, c.height)
-  const step = Math.max(2, Math.round(size / 40))
+  const step = Math.max(2, Math.round(Math.min(W, H) / 70))
   const pts = []
   for (let y = 0; y < c.height; y += step) {
     for (let x = 0; x < c.width; x += step) {
-      if (data[(y * c.width + x) * 4 + 3] > 140) pts.push([x, y])
+      if (data[(y * c.width + x) * 4 + 3] > 110) pts.push([x, y])
     }
   }
-  return { pts, size }
+  return { pts, lay }
 }
 
 /** 柔邊墨點貼圖：中心濃、邊緣化開，比逐點畫圓更像墨也更省效能 */
@@ -83,21 +108,20 @@ function inkSprite(color) {
 }
 
 /** 停留時的暈墨：同一個字加上大範圍陰影模糊，預先畫好 */
-function renderHalo(ch, W, H, size, color, dpr) {
+function renderHalo(ch, W, H, lay, color, dpr) {
   const c = document.createElement('canvas')
   c.width = Math.round(W * dpr)
   c.height = Math.round(H * dpr)
   const g = c.getContext('2d')
   g.scale(dpr, dpr)
-  g.font = `700 ${size}px ${FONT}`
-  g.textAlign = 'center'
-  g.textBaseline = 'middle'
   g.fillStyle = color
   g.shadowColor = color
-  g.shadowBlur = size * 0.18
-  g.fillText(ch, W / 2, H / 2 + size * 0.04)
+  g.shadowBlur = lay.size * 0.1
+  drawGlyph(g, ch, lay)
   return c
 }
+
+const sealReady = () => [...document.fonts].some(f => f.family.replace(/["']/g, '') === SEAL_FAMILY && f.status === 'loaded')
 
 /**
  * 各主分類的自由流動：回傳 [x, y, 透明度係數, 大小係數]。θ 每圈走 2π，所以都是週期函數。
@@ -194,17 +218,19 @@ function delayFor(cat, p, W, H) {
 /**
  * 在 canvas 上播放循環動畫
  * @param {HTMLCanvasElement} canvas - 尺寸由 CSS 決定
- * @param {{ glyph: string, cat: number, level: 'good'|'fair'|'bad' }} opts
+ * @param {{ glyph: string, seal?: string, cat: number, level: 'good'|'fair'|'bad' }} opts
+ *   glyph：代表字（繁體，篆字字型無法使用時顯示）；seal：篆字字型中的字碼
  * @returns {() => void} 停止函式；canvas 離開文件時也會自動停止
  */
-export function startInkScene(canvas, { glyph, cat, level }) {
+export function startInkScene(canvas, { glyph, seal = glyph, cat, level }) {
   const ctx = canvas.getContext('2d')
   const jitter = level === 'bad' ? 1.8 : level === 'good' ? 0.4 : 0.9
   let W = 0
   let H = 0
   let dpr = 1
   let particles = []
-  let glyphSize = 0
+  let glyphLayout = null
+  let ch = glyph
   let halo = null
   let sprites = null
   let colors = null
@@ -221,7 +247,7 @@ export function startInkScene(canvas, { glyph, cat, level }) {
     if (!colors || colors.ink !== ink || colors.acc !== acc) {
       colors = { ink, acc, gold }
       sprites = { ink: inkSprite(toHex(ink)), acc: inkSprite(toHex(acc)), gold: inkSprite(toHex(gold)) }
-      if (W) halo = renderHalo(glyph, W, H, glyphSize, acc, dpr)
+      if (W && glyphLayout) halo = renderHalo(ch, W, H, glyphLayout, acc, dpr)
     }
   }
 
@@ -233,17 +259,27 @@ export function startInkScene(canvas, { glyph, cat, level }) {
     dpr = Math.min(devicePixelRatio || 1, 2)
     canvas.width = Math.round(W * dpr)
     canvas.height = Math.round(H * dpr)
+    const timeout = new Promise(r => setTimeout(r, 1500))
     try {
-      await Promise.race([document.fonts.load(`700 40px "Noto Serif TC"`, glyph), new Promise(r => setTimeout(r, 1200))])
+      await Promise.race([document.fonts.load(`40px ${SEAL_FONT}`, seal), timeout])
     } catch {}
+    let font = SEAL_FONT
+    ch = seal
+    if (!sealReady()) {
+      font = FALLBACK_FONT
+      ch = glyph
+      try {
+        await Promise.race([document.fonts.load(`40px "Noto Serif TC"`, glyph), timeout])
+      } catch {}
+    }
     if (stopped) return
-    const { pts, size } = sampleGlyph(glyph, W, H)
+    const { pts, lay } = sampleGlyph(ch, W, H, font)
     const rand = rng(glyph.codePointAt(0) * 7 + cat)
     for (let i = pts.length - 1; i > 0; i--) {
       const j = Math.floor(rand() * (i + 1))
       ;[pts[i], pts[j]] = [pts[j], pts[i]]
     }
-    const glyphCount = Math.max(160, Math.min(420, pts.length))
+    const glyphCount = Math.max(180, Math.min(560, pts.length))
     const ambient = 40
     particles = Array.from({ length: glyphCount + ambient }, (_, i) => {
       const free = i >= glyphCount
@@ -266,7 +302,7 @@ export function startInkScene(canvas, { glyph, cat, level }) {
       p.delay = delayFor(cat, p, W, H)
       return p
     })
-    glyphSize = size
+    glyphLayout = lay
     colors = null
     readColors()
   }

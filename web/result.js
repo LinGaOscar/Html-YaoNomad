@@ -6,7 +6,7 @@ import { fullName, TRIGRAMS } from './core/hexagrams.js'
 import { AFFINITY, CATEGORIES, FORTUNE } from './core/scoring.js'
 import { castKind, evaluate, todayDaily } from './core/progress.js'
 import { encodeShare, decodeShare } from './core/share.js'
-import { TRAITS, relation, tipFor, storyFor, stampsOf, glyphFor, DEFAULT_SEL, resolveSel, selToCode, codeToSel } from './activities.js'
+import { TRAITS, relation, tipFor, storyFor, stampsOf, glyphFor, sealFor, DEFAULT_SEL, resolveSel, selToCode, codeToSel } from './activities.js'
 import { startInkScene } from './inkscene.js'
 import { inkBurst } from './ink.js'
 import {
@@ -104,7 +104,10 @@ function categoriesHTML(categories) {
 function detailHTML(s, result) {
   const story = storyFor(s, s.level)
   return `
-    <div class="sd-scene"><canvas role="img" aria-label="墨點依${CATEGORIES[s.cats[0]]}類的方式流動，聚成「${glyphFor(s)}」字後化開"></canvas></div>
+    <div class="sd-scene">
+      <canvas role="img" aria-label="墨點依${CATEGORIES[s.cats[0]]}類的方式流動，聚成篆書「${glyphFor(s)}」字後化開"></canvas>
+      <span class="seal-cap" aria-hidden="true">中山王篆 · ${glyphFor(s)}</span>
+    </div>
     <div class="sd-text">
       <div class="sd-head">
         <h3>${esc(s.name)} <b>${s.score}</b><small>/100 · ${LEVEL[s.level]}</small></h3>
@@ -158,7 +161,7 @@ function setupScoreDetail(grid, scores, result) {
     place()
     stopScene?.()
     const s = scores[i]
-    stopScene = startInkScene(panel.querySelector('canvas'), { glyph: glyphFor(s), cat: s.cats[0], level: s.level })
+    stopScene = startInkScene(panel.querySelector('canvas'), { glyph: glyphFor(s), seal: sealFor(s), cat: s.cats[0], level: s.level })
     panel.scrollIntoView({ block: 'nearest', behavior: reduceMotion.matches ? 'auto' : 'smooth' })
   }
 
@@ -403,6 +406,7 @@ function renderView(ctx) {
               <p>三枚硬幣同擲，正面（字面）記 2、背面記 3，加總得 6、7、8、9。</p>
               <p>6 老陰、9 老陽為變爻，會陰陽互換形成變卦；7 少陽、8 少陰不變。</p>
               <p>共擲六次，由下往上排成六爻，得本卦；有變爻再得變卦。</p>
+              <p>六事動畫中的篆字取自「敬峰中山王篆」字型（劉敬峰，SIL OFL 1.1），為戰國中山國銅器金文風格。</p>
             </div>
           </details>
         </aside>

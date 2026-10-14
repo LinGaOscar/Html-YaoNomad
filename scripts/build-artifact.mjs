@@ -44,7 +44,12 @@ const themeScript = pick(/(<script>[\s\S]*?<\/script>)/, '主題預載 script')
 const body = pick(/<body>([\s\S]*?)<script type="module"/, 'body 內容')
 const data = JSON.stringify(JSON.parse(read('data/hexagrams.json'))).replace(/</g, '\\u003c')
 const bundle = `const __modules = {}\n${MODULES.map(wrapModule).join('\n')}`
-for (const [name, text] of [['styles.css', read('styles.css')], ['bundle', bundle]]) {
+// 篆字字型內嵌成 data URI（artifact 只允許 Google Fonts 或內嵌字型）
+const sealFont = readFileSync(join(web, 'fonts', 'yao-seal.woff2')).toString('base64')
+const css = read('styles.css').replace('url("./fonts/yao-seal.woff2")', `url("data:font/woff2;base64,${sealFont}")`)
+if (!css.includes('data:font/woff2')) throw new Error('styles.css 找不到篆字字型的 @font-face')
+
+for (const [name, text] of [['styles.css', css], ['bundle', bundle]]) {
   if (/<\/(style|script)/i.test(text)) throw new Error(`${name} 含有會提早結束標籤的字串`)
 }
 
@@ -53,7 +58,7 @@ const page = `<title>My易經</title>
 <meta name="description" content="三錢六擲, 一卦觀六事.">
 ${fonts}
 <style>
-${read('styles.css')}
+${css}
 </style>
 ${themeScript}
 ${body.trim()}

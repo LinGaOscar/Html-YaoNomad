@@ -40,6 +40,16 @@ node scripts/build-artifact.mjs [輸出路徑] [--share-base <artifact 網址>] 
 
 把 `/web` 的 CSS、JS 與卦象資料全部內嵌成一個 HTML 片段（不含 `<html>`/`<head>`/`<body>`，由 artifact 發布時包上）。單檔版不註冊 Service Worker。artifact 內無法得知自己的公開網址，分享連結的基底要用 `--share-base` 指定（目前為 https://claude.ai/artifact/5spvV1jA7SNqdPLSfsKrdG）。新增 `web/*.js` 模組時，要同步加進腳本的 `MODULES`（依相依順序）與 `service-worker.js` 的 `ASSETS`。
 
+### 篆字子集字型
+
+```bash
+pip install fonttools brotli
+git clone --depth 1 https://github.com/jeffi369/JFZSKSealScript /tmp/jfzsk
+python3 scripts/build-seal-font.py /tmp/jfzsk/fonts/JFZSKSealScript_V3.ttf   # 輸出 web/fonts/yao-seal.woff2
+```
+
+從 `activities.js` 讀出所有代表字（`glyph`，經 `SEAL_CODE` 轉成字型字碼）產生子集。新增或更換代表字後要重跑，並遞增 `service-worker.js` 的 `CACHE`。授權與來源見 `web/fonts/README.md`。
+
 ### TUI
 
 ```bash

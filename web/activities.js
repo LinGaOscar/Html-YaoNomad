@@ -42,7 +42,7 @@ export const ITEMS = {
     },
   },
   develop: {
-    name: '系統開發', cats: [2, 1], glyph: '構',
+    name: '系統開發', cats: [2, 1], glyph: '造',
     high: '神來一筆',
     tips: { good: '適合開新功能、做架構設計。', fair: '以小步提交為主，邊做邊測。', bad: '不宜大改架構，先做規劃與文件。' },
     stories: {
@@ -274,6 +274,18 @@ export const stampsOf = s => ITEMS[s.id] || {}
 
 /** 事項的代表字（水墨粒子動畫聚成的字） */
 export const glyphFor = s => ITEMS[s.id]?.glyph || s.name.slice(0, 1)
+
+/**
+ * 篆字字型（敬峰中山王篆的子集，見 web/fonts/）依簡體字碼收字：代表字為繁體時對應到字型裡的字碼。
+ * 新增事項時，若代表字不在字型內，先在這裡補對應，再重跑 scripts/build-seal-font.py
+ */
+export const SEAL_CODE = {
+  會: '会', 蟲: '虫', 發: '发', 魚: '鱼', 帳: '账', 簽: '签', 習: '习',
+  題: '题', 講: '讲', 讀: '读', 財: '财', 淨: '净', 遊: '游', 動: '动',
+}
+
+/** 事項代表字在篆字字型中的字碼 */
+export const sealFor = s => SEAL_CODE[glyphFor(s)] || glyphFor(s)
 
 /** 八卦性質，以三位碼為索引 */
 export const TRAITS = ['柔順承載', '發動開創', '險陷深入', '喜悅言說', '止靜', '光明清晰', '滲透溝通', '剛健主導']
