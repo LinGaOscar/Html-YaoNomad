@@ -13,6 +13,10 @@
  * @property {number} lower - 下卦三位碼（0–7）
  * @property {string} judgment - 卦辭
  * @property {string[]} lines - 爻辭，index 0 = 初爻，共 6 條
+ * @property {string} image - 大象傳（象曰）
+ * @property {string} motto - 一句話提醒
+ * @property {string} plain - 白話解釋
+ * @property {string} advice - 職場解讀
  */
 
 /**

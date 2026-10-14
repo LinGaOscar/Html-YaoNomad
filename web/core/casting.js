@@ -10,15 +10,30 @@ import { lookup } from './hexagrams.js'
  * @returns {import('./models.js').CastResult}
  */
 export function castHexagram(hexagrams, question, coinFn = () => (Math.random() < 0.5 ? 2 : 3)) {
-  const lines = []
+  const values = []
   for (let i = 0; i < 6; i++) {
-    const sum = coinFn() + coinFn() + coinFn()
-    lines.push({
-      value: sum,
-      yin: sum % 2 === 0,
-      changing: sum === 6 || sum === 9,
-    })
+    values.push(coinFn() + coinFn() + coinFn())
   }
+  return castFromLines(hexagrams, question, values)
+}
+
+/**
+ * 由六個爻值（6–9，index 0 = 初爻）直接成卦；供手動輸入六爻與重開歷史紀錄使用
+ * @param {import('./models.js').Hexagram[]} hexagrams
+ * @param {string} question
+ * @param {number[]} values - 六個爻值
+ * @returns {import('./models.js').CastResult}
+ * @throws {Error} 若爻值數量不是 6 或不在 6–9
+ */
+export function castFromLines(hexagrams, question, values) {
+  if (values.length !== 6 || values.some(v => ![6, 7, 8, 9].includes(v))) {
+    throw new Error(`爻值須為 6 個 6–9 的整數: ${values}`)
+  }
+  const lines = values.map(sum => ({
+    value: sum,
+    yin: sum % 2 === 0,
+    changing: sum === 6 || sum === 9,
+  }))
 
   const lower = trigramCode(lines.slice(0, 3))
   const upper = trigramCode(lines.slice(3, 6))

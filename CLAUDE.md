@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 YaoNomad 是以《易經》三枚硬幣卜卦法為核心的多平台系統，包含 Web PWA（`/web`）與 JS TUI（`/tui-js`）兩種介面實作。核心規格與介面實作嚴格分離。
 
-**目前進度**：`core-spec` 與 `web/core/`（casting、hexagrams、models）已完成並通過測試；`tui-js/main.js` 可執行。`web/` 僅有最小可用版的 `index.html`，`styles.css`、`main.js`、`manifest.json`、`service-worker.js` 尚未建立。詳細規劃見 `PLAN.md`。
+**目前進度**：`core-spec` 與 `web/core/`（casting、hexagrams、scoring、models）已完成並通過測試；`tui-js/main.js` 可執行。`web/` 為「富邦大棒手 · 觀卦知時」PWA：`main.js`（hash 路由：`#/` 首頁、`#/cast` 起卦動畫、`#/r/<id>` 結果、`#/history` 歷史紀錄）、`ink.js`（水墨粒子背景）、`styles.css`、`manifest.json`、`service-worker.js`。歷史紀錄存於 localStorage，只存爻值與硬幣，重開時以 `castFromLines` 重算。詳細規劃見 `PLAN.md`。
 
 線上部署（GitHub Pages）：https://lingaoscar.github.io/Html-YaoNomad/。本機開發環境設定見 `dev.md`。
 
@@ -22,7 +22,7 @@ YaoNomad 是以《易經》三枚硬幣卜卦法為核心的多平台系統，�
 三個核心型別（定義於 `web/core/models.js`）：
 
 - `Line`：爻值（6/7/8/9）、`yin`（偶數為陰）、`changing`（6 或 9 為變爻）
-- `Hexagram`：`number`（1–64）、`name`、`upper`/`lower`（trigram 0–7）、`judgment`、`lines[6]`
+- `Hexagram`：`number`（1–64）、`name`、`upper`/`lower`（trigram 0–7）、`judgment`、`lines[6]`、`image`（象曰）、`motto`（一句話）、`plain`（白話）、`advice`（職場解讀）
 - `CastResult`：`question`、`lines[6]`、`present`、`future`（無變爻時為 null）
 
 ## 狀態機
@@ -48,7 +48,7 @@ node --test web/core/*.test.js                                           # 全�
 node --test --test-name-pattern="<測試名稱>" web/core/casting.test.js   # 執行單一測試
 ```
 
-需以靜態伺服器執行（例如 `npx serve web`）；`index.html` 使用 ES module 與 `fetch` 載入資料，以 `file://` 直接開啟會失敗。push 到 `main` 會由 `.github/workflows/deploy-pages.yml` 自動將 `/web` 部署到 GitHub Pages。
+需以靜態伺服器執行（例如 `npx serve web`）；修改 `web/` 靜態檔後須遞增 `service-worker.js` 的 `CACHE` 版本；`index.html` 使用 ES module 與 `fetch` 載入資料，以 `file://` 直接開啟會失敗。push 到 `main` 會由 `.github/workflows/deploy-pages.yml` 自動將 `/web` 部署到 GitHub Pages。
 
 ## 卜卦演算法（三硬幣法）
 
@@ -69,6 +69,7 @@ node --test --test-name-pattern="<測試名稱>" web/core/casting.test.js   # �
 - 重複六次，**自下而上**排列（index 0 = 初爻）
 - 查卦：線性掃描 64 筆，以 `upper` 與 `lower` trigram 碼比對
 - 有變爻則反轉對應爻的陰陽，查得變卦；無變爻則 `future = null`
+- 六事評分（`web/core/scoring.js`）：八卦傾向表 × 內卦 60%／外卦 40%，有變卦時本卦 75%＋變卦 25%，經 tanh 曲線展開；≥70 上佳、<40 不宜。規則詳見 `core-spec/README.md`
 
 ## 八卦三位碼（bit0 = 底爻，yang=1）
 

@@ -2,67 +2,58 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>YaoNomad 卜卦</title>
-<style>
-  body { font-family: -apple-system, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; }
-  textarea { width: 100%; box-sizing: border-box; font-size: 1rem; }
-  button { margin-top: 0.5rem; padding: 0.5rem 1rem; font-size: 1rem; }
-  .hexagram { margin-top: 1.5rem; padding: 1rem; border: 1px solid #ccc; border-radius: 4px; }
-  .lines { white-space: pre-line; margin-top: 0.5rem; }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F3EEE4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#191D1B" media="(prefers-color-scheme: dark)">
+<meta name="description" content="三錢六擲，一卦觀六事：開會、撰寫報告、抓BUG、系統開發、程式上線、餵魚/澆花。">
+<title>富邦大棒手 · 觀卦知時</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon.svg">
+<link rel="stylesheet" href="./styles.css">
+<script>
+  // 先套用主題，避免載入時閃爍
+  try {
+    const t = localStorage.getItem('yaonomad.theme')
+    if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t
+  } catch {}
+</script>
 </head>
 <body>
-  <h1>YaoNomad 卜卦</h1>
-  <textarea id="question" rows="2" placeholder="輸入你的問題"></textarea>
-  <br>
-  <button id="cast-btn">開始卜卦</button>
-  <div id="result"></div>
+  <canvas id="ink" aria-hidden="true"></canvas>
+  <svg class="mountains" aria-hidden="true" viewBox="0 0 1440 320" preserveAspectRatio="none">
+    <path class="m1" d="M0 230 C120 170 210 200 300 150 C390 100 470 170 560 140 C680 100 760 40 880 90 C980 130 1060 80 1160 110 C1260 140 1350 100 1440 130 L1440 320 L0 320 Z"/>
+    <path class="m2" d="M0 260 C140 220 230 250 340 210 C450 170 520 230 640 200 C760 170 840 120 960 170 C1080 220 1180 180 1300 200 C1370 212 1410 205 1440 210 L1440 320 L0 320 Z"/>
+    <path class="m3" d="M0 290 C160 270 280 285 420 262 C560 240 660 280 800 268 C940 256 1060 240 1200 262 C1320 280 1400 270 1440 275 L1440 320 L0 320 Z"/>
+  </svg>
 
-  <script type="module">
-    import { castHexagram } from './core/casting.js'
+  <div class="frame">
+    <header class="appbar">
+      <a class="brand" href="#/" aria-label="回到首頁">
+        <span class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><g stroke="currentColor" stroke-width="2.2" stroke-linecap="square">
+            <path d="M5 4.5h14"/><path d="M5 8.5h14"/><path d="M5 12.5h5M14 12.5h5"/><path d="M5 16.5h14"/><path d="M5 20.5h5M14 20.5h5"/>
+          </g></svg>
+        </span>
+        <span class="brand-text">
+          <span class="brand-name">富邦大棒手</span>
+          <span class="brand-sub">Fubon Slugger · 觀卦知時</span>
+        </span>
+      </a>
+      <div class="appbar-actions">
+        <button class="icon-btn" id="theme-btn" type="button" aria-label="切換深淺色" title="切換深淺色">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 4.5a7.5 7.5 0 0 1 0 15z" fill="currentColor"/></svg>
+        </button>
+        <button class="icon-btn" id="fs-btn" type="button" aria-label="全螢幕" title="全螢幕" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H4v5M4 4l6 6M15 20h5v-5M20 20l-6-6"/></g></svg>
+        </button>
+      </div>
+    </header>
+    <main id="view" tabindex="-1"></main>
+  </div>
 
-    let hexagramsPromise = null
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    function loadHexagrams() {
-      if (hexagramsPromise === null) {
-        hexagramsPromise = fetch('./data/hexagrams.json').then(res => res.json())
-      }
-      return hexagramsPromise
-    }
-
-    function renderHexagram(title, hexagram) {
-      const section = document.createElement('div')
-      section.className = 'hexagram'
-
-      const heading = document.createElement('h2')
-      heading.textContent = `${title}：${hexagram.number}. ${hexagram.name}`
-      section.appendChild(heading)
-
-      const judgment = document.createElement('p')
-      judgment.textContent = hexagram.judgment
-      section.appendChild(judgment)
-
-      const lines = document.createElement('div')
-      lines.className = 'lines'
-      lines.textContent = hexagram.lines.join('\n')
-      section.appendChild(lines)
-
-      return section
-    }
-
-    document.getElementById('cast-btn').addEventListener('click', async () => {
-      const question = document.getElementById('question').value
-      const hexagrams = await loadHexagrams()
-      const result = castHexagram(hexagrams, question)
-
-      const resultEl = document.getElementById('result')
-      resultEl.replaceChildren()
-      resultEl.appendChild(renderHexagram('本卦', result.present))
-      if (result.future !== null) {
-        resultEl.appendChild(renderHexagram('變卦', result.future))
-      }
-    })
-  </script>
+  <script type="module" src="./main.js"></script>
 </body>
 </html>

@@ -12,7 +12,11 @@
 /web/               Web 介面
   core/             核心邏輯（castHexagram、hexagrams lookup、型別定義），無 UI 依賴
   data/             hexagrams.json 副本（從 core-spec 手動同步）
-  index.html        最小可用版 UI（無 CSS 檔、無 PWA 資源）
+  index.html        外框（標題列、粒子畫布）
+  main.js           hash 路由與四個畫面：首頁、起卦動畫、結果、歷史紀錄
+  ink.js            水墨粒子背景（純視覺）
+  styles.css        色票與版面（深淺色）
+  service-worker.js 網路優先、離線回快取；改靜態檔後請遞增 CACHE 版本
 /tui-js/            終端機介面，main.js 直接 import ../web/core/
 /docs/              設計文件
 ```
@@ -21,7 +25,7 @@
 
 ### Web
 
-直接用瀏覽器開啟 `web/index.html`，或起一個靜態伺服器（例如 `npx serve web`）。無編譯步驟。
+起一個靜態伺服器（例如 `npx serve web` 或 `python3 -m http.server -d web`）。無編譯步驟；以 `file://` 直接開啟會因 ES module 與 `fetch` 限制而失敗。
 
 ### TUI
 
@@ -38,7 +42,7 @@ node --test web/core/*.test.js                                          # 全部
 node --test --test-name-pattern="<測試名稱>" web/core/casting.test.js  # 執行單一測試
 ```
 
-目前僅 `web/core/` 有測試（`casting.test.js`、`hexagrams.test.js`）；`tui-js/main.js` 與 `web/index.html` 沒有自動化測試，需手動執行驗證。
+目前僅 `web/core/` 有測試（`casting.test.js`、`hexagrams.test.js`、`scoring.test.js`）；`tui-js/main.js` 與 Web 介面沒有自動化測試，需手動執行驗證。
 
 ## 資料同步注意事項
 

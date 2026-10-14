@@ -11,7 +11,7 @@
 | Web | `/web` | HTML / CSS / JavaScript（無框架、無外部依賴） |
 | JS TUI | `/tui-js` | Node.js（無框架） |
 
-目前 `/web` 為最小可用版：僅有 `index.html` 呼叫核心邏輯並顯示結果，尚未提供 PWA 所需的 `manifest.json` / `service-worker.js`（離線快取），因此還不能在離線狀態下使用。
+`/web` 為「富邦大棒手 · 觀卦知時」PWA：三錢起卦動畫、六事評分（開會、撰寫報告、抓BUG、系統開發、程式上線、餵魚/澆花）、本卦/變卦解析、手動輸入六爻、歷史紀錄（存於瀏覽器 localStorage），水墨粒子背景，支援深淺色與離線使用。
 
 ## 架構
 
@@ -38,7 +38,7 @@ node tui-js/main.js
 
 ### Web
 
-直接開啟 `web/index.html`，或啟動任一靜態伺服器。push 到 `main` 會由 GitHub Actions 自動部署到 GitHub Pages。
+需以靜態伺服器執行（例如 `npx serve web`），以 `file://` 直接開啟會因 ES module 與 `fetch` 限制而失敗。push 到 `main` 會由 GitHub Actions 自動部署到 GitHub Pages。
 
 ## 測試
 
