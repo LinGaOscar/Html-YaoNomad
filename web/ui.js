@@ -3,10 +3,10 @@
 /** 各畫面共用：常數、格式化、半形轉換、畫面掛載、提示、歷史與設定儲存 */
 
 import { TRIGRAMS } from './core/hexagrams.js'
-import { ACHIEVEMENTS, summarize } from './core/progress.js'
+import { ACHIEVEMENTS, currentStreak, summarize } from './core/progress.js'
 import { DEFAULT_SEL, validSel, resolveSel, templateOf } from './activities.js'
 
-export const VERSION = 'V3.03'
+export const VERSION = 'V3.10'
 export const LINE_POS = ['初爻', '二爻', '三爻', '四爻', '五爻', '上爻']
 export const LINE_KIND = { 6: '老陰（變）', 7: '少陽', 8: '少陰', 9: '老陽（變）' }
 export const COIN_FACE = { 2: '正', 3: '背' }
@@ -19,8 +19,9 @@ const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六']
 const HISTORY_KEY = 'yaonomad.history'
 const SEL_KEY = 'yaonomad.sel'
 const BOOK_SINCE_KEY = 'yaonomad.bookSince'
-/** 舊版自由輸入的自訂六事設定，已停用 */
-const OLD_ITEMS_KEY = 'yaonomad.items'
+const DATA_VERSION_KEY = 'yaonomad.dataVersion'
+/** 資料版本：評分規則改版（六類＋專屬規則）時遞增，舊資料一律清除 */
+const DATA_VERSION = 2
 const HISTORY_MAX = 200
 
 export const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)')
@@ -144,7 +145,8 @@ export async function copyToClipboard(text) {
  * @property {number[]} values - 六爻值，index 0 = 初爻
  * @property {number[][]|null} coins - 每爻三枚硬幣（2/3）；手動輸入時為 null
  * @property {string} [question] - 心中所問
- * @property {string[]} [sel] - 起卦當時的六事（依事類排列的事項代號）；預設工程師樣板時省略
+ * @property {string[]} [sel] - 起卦當時的六事（事項代號）；預設工程師樣板時省略
+ * @property {number} [streak] - 起卦當下的連續起卦天數（含當天），大於 1 才記錄；例行類加分用
  * @property {(boolean|null)[]} [feedback] - 應驗回饋，index 同六事
  * 載入後另有 items（由 sel 解出的 { id, name, type }），只存在記憶體，不寫回儲存
  */
@@ -160,12 +162,6 @@ export function loadHistory() {
     return []
   }
   if (!Array.isArray(list)) return []
-  // 舊版自由輸入的自訂六事（紀錄裡存成 items）已停用：連同設定一次清除
-  if (list.some(r => r && 'items' in r)) {
-    list = list.filter(r => r && !('items' in r))
-    saveHistory(list)
-    try { localStorage.removeItem(OLD_ITEMS_KEY) } catch {}
-  }
   return list.filter(isRecord).map(r => ({ ...r, items: resolveSel(r.sel) }))
 }
 
@@ -179,11 +175,23 @@ export function saveHistory(list) {
 
 export function addRecord(method, values, coins, question = '') {
   const sel = loadSel()
+  const history = loadHistory()
   const record = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), time: Date.now(), method, values, coins }
   if (question.trim()) record.question = question.trim().slice(0, 40)
   if (templateOf(sel) !== templateOf(DEFAULT_SEL)) record.sel = sel
-  saveHistory([record, ...loadHistory()])
+  const streak = currentStreak([record, ...history], record.time)
+  if (streak > 1) record.streak = streak
+  saveHistory([record, ...history])
   return record
+}
+
+/** 評分規則改版後清除舊資料（歷史、六事選擇、卦簿起算點、舊版自訂設定）；啟動時呼叫一次 */
+export function migrateData() {
+  try {
+    if (Number(localStorage.getItem(DATA_VERSION_KEY)) === DATA_VERSION) return
+    for (const key of [HISTORY_KEY, SEL_KEY, BOOK_SINCE_KEY, 'yaonomad.items']) localStorage.removeItem(key)
+    localStorage.setItem(DATA_VERSION_KEY, String(DATA_VERSION))
+  } catch {}
 }
 
 export function updateRecord(id, patch) {

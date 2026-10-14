@@ -3,7 +3,7 @@
 /** 我的卦簿（#/book）與自訂六事（#/settings） */
 
 import { fullName } from './core/hexagrams.js'
-import { TYPES } from './core/scoring.js'
+import { CATEGORIES } from './core/scoring.js'
 import { ACHIEVEMENTS, summarize } from './core/progress.js'
 import { ITEMS, TEMPLATES, templateOf } from './activities.js'
 import { esc, cnNum, formatDate, isStale, mount, toast, hw, loadHexagrams, bookRecords, bookSince, resetBook, loadSel, saveSel } from './ui.js'
@@ -52,17 +52,17 @@ export async function renderBook(token) {
       </section>
 
       <section class="book-sec">
-        <div class="sec-head"><h2>應驗準度</h2><span>${acc.rated} 卦有回饋</span></div>
+        <div class="sec-head"><h2>應驗準度</h2><span>依主分類 · ${acc.rated} 卦有回饋</span></div>
         ${acc.total
-          ? `<ul class="acc-list">${acc.byName.map(r => {
+          ? `<ul class="acc-list">${acc.byCat.map(r => {
               const total = r.hit + r.miss
-              return `<li>
-                <span class="acc-name">${esc(r.name)}</span>
-                <span class="acc-bar" aria-hidden="true"><i style="width:${pct(r.hit, total)}%"></i></span>
-                <span class="acc-num">${pct(r.hit, total)}% · ${r.hit}/${total}</span>
+              return `<li${total ? '' : ' class="none"'}>
+                <span class="acc-name">${CATEGORIES[r.cat]}</span>
+                <span class="acc-bar" aria-hidden="true"><i style="width:${total ? pct(r.hit, total) : 0}%"></i></span>
+                <span class="acc-num">${total ? `${pct(r.hit, total)}% · ${r.hit}/${total}` : '尚無回饋'}</span>
               </li>`
             }).join('')}</ul>`
-          : '<p class="empty-line">在結果頁的「應驗回饋」勾選準或不準，這裡會統計每件事的準度。</p>'}
+          : '<p class="empty-line">在結果頁的「應驗回饋」勾選準或不準，這裡會依六類統計準度：看看你是分析準，還是時運準。</p>'}
       </section>
 
       <section class="book-sec">
@@ -107,7 +107,6 @@ export async function renderBook(token) {
 export function renderSettings(focusId = null) {
   const sel = loadSel()
   const current = templateOf(sel)
-  const usedBy = id => TEMPLATES.filter(t => t.sel.includes(id)).map(t => t.name).join('、')
   const node = mount(`
     <section class="settings">
       <div class="topbar"><a href="#/">← 返回首頁</a><a href="#/book">我的卦簿 →</a></div>
@@ -125,16 +124,18 @@ export function renderSettings(focusId = null) {
       <section class="book-sec">
         <div class="sec-head"><h2>逐項替換</h2><span>目前：${current ? `${current.name}樣板` : '自訂組合'}</span></div>
         <div class="slots">
-          ${TYPES.map((type, i) => `
+          ${sel.map((cur, i) => `
             <div class="slot">
-              <label for="slot-${i}">${type}類</label>
-              <select id="slot-${i}" data-i="${i}">${Object.entries(ITEMS).filter(([, it]) => it.type === i).map(([id, it]) =>
-                `<option value="${id}"${sel[i] === id ? ' selected' : ''}>${it.name}（${usedBy(id)}）</option>`).join('')}
+              <label for="slot-${i}">第${'一二三四五六'[i]}事</label>
+              <select id="slot-${i}" data-i="${i}">${CATEGORIES.map((cat, c) => `
+                <optgroup label="${cat}類為主">${Object.entries(ITEMS).filter(([, it]) => it.cats[0] === c).map(([id, it]) =>
+                  `<option value="${id}"${cur === id ? ' selected' : ''}>${it.name}（${cat}・${CATEGORIES[it.cats[1]]}）</option>`).join('')}
+                </optgroup>`).join('')}
               </select>
             </div>`).join('')}
         </div>
       </section>
-      <p class="fine">評分依事類計算，同一事類的事項分數相同，提醒與故事不同。更換後只影響之後的新卦例，舊卦例保留當時的六事。</p>
+      <p class="fine">括號內為主分類・副分類。選到已在其他格的事項時，兩格會對調。更換後只影響之後的新卦例，舊卦例保留當時的六事。</p>
     </section>`)
 
   const apply = (next, msg, focusId) => {
@@ -148,8 +149,11 @@ export function renderSettings(focusId = null) {
     apply(t.sel, `已套用${t.name}樣板`, null)
   }))
   node.querySelectorAll('.slot select').forEach(el => el.addEventListener('change', () => {
+    const i = Number(el.dataset.i)
     const next = [...sel]
-    next[Number(el.dataset.i)] = el.value
-    apply(next, `已換成${ITEMS[el.value].name}`, el.id)
+    const j = next.indexOf(el.value)
+    if (j >= 0) next[j] = next[i] // 已在其他格：兩格對調
+    next[i] = el.value
+    apply(next, j >= 0 ? `已與第${'一二三四五六'[j]}事對調` : `已換成${ITEMS[el.value].name}`, el.id)
   }))
 }

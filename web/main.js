@@ -11,7 +11,7 @@ import { renderBook, renderSettings, glyphHTML } from './book.js'
 import { resolveSel } from './activities.js'
 import {
   VERSION, LINE_POS, LINE_KIND, COIN_FACE, KIND_LABEL, methodName, loadHexagrams, hw, esc, formatDay, formatTime, sleep,
-  nextToken, isStale, mount, toast, loadHistory, saveHistory, addRecord, loadSel, bookRecords, unlockedNow, announceUnlocks,
+  nextToken, isStale, mount, toast, loadHistory, saveHistory, addRecord, loadSel, bookRecords, unlockedNow, announceUnlocks, migrateData,
 } from './ui.js'
 
 const THEME_KEY = 'yaonomad.theme'
@@ -311,6 +311,7 @@ function setupChrome() {
   }
 }
 
+migrateData()
 setupChrome()
 initInk(document.getElementById('ink'))
 addEventListener('hashchange', route)

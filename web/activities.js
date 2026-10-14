@@ -5,16 +5,16 @@
  * 純介面內容，不影響評分邏輯。
  */
 
-import { DEFAULT_ITEMS } from './core/scoring.js'
-
 /**
- * 事項池：每個事項有事類（0–5，見 core-spec「六事評分」）、三種評等的提醒與小故事（主角是「小易」），
- * 以及印章彩蛋文字：low 發布類低於 10 分、high 分析類 90 分以上、friday 週五發布類扣分。
+ * 事項池：cats 為 [主分類, 副分類]（六類見 core-spec「六事評分」），scene 為循環動畫，
+ * tips／stories 為三種評等的提醒與小故事（主角是「小易」）。
+ * 印章彩蛋（可省略）：low 分數低於 10、high 90 分以上、friday／monday 主分類套用了週五／週一規則。
  * 代號會存進紀錄與分享碼，只能用小寫英文字母，且不可更改。
  */
 export const ITEMS = {
   meeting: {
-    name: '開會', type: 0,
+    name: '開會', cats: [0, 3], scene: 'meet',
+    monday: '週一症候群',
     tips: { good: '宜主動發言、拍板定案，共識來得快。', fair: '照議程走，避免臨時加題。', bad: '能改用文字溝通就別開，開了也易各說各話。' },
     stories: {
       good: '小易帶著一頁簡報走進會議室，十分鐘講完重點，主管點頭、同事補了兩個好點子，散會前分工就定好了。今天適合把卡住的議題端上桌。',
@@ -23,7 +23,7 @@ export const ITEMS = {
     },
   },
   report: {
-    name: '撰寫報告', type: 1,
+    name: '撰寫報告', cats: [1, 2], scene: 'write',
     tips: { good: '思路清晰，一氣呵成的好時機。', fair: '先列大綱再填內容，分段完成。', bad: '易卡文或寫偏，先蒐集資料，明天再修。' },
     stories: {
       good: '小易泡了杯茶，大綱一列好，段落就像自己流出來。下班前報告已經校對完，還多畫了一張圖。思路清楚的日子，別浪費。',
@@ -32,7 +32,7 @@ export const ITEMS = {
     },
   },
   debug: {
-    name: '抓BUG', type: 2,
+    name: '抓BUG', cats: [1, 4], scene: 'bug',
     high: '除錯之神',
     tips: { good: '直覺敏銳，追根究柢容易找到病灶。', fair: '照步驟重現、二分排查，耐心是關鍵。', bad: '容易越修越亂，先記錄現象、找人一起看。' },
     stories: {
@@ -42,7 +42,8 @@ export const ITEMS = {
     },
   },
   develop: {
-    name: '系統開發', type: 3,
+    name: '系統開發', cats: [2, 1], scene: 'build',
+    high: '神來一筆',
     tips: { good: '適合開新功能、做架構設計。', fair: '以小步提交為主，邊做邊測。', bad: '不宜大改架構，先做規劃與文件。' },
     stories: {
       good: '新功能的架構圖一畫就順，介面一致、模組分明。小易寫下第一個測試，一路寫到收工，程式碼乾淨得想裱起來。',
@@ -51,7 +52,7 @@ export const ITEMS = {
     },
   },
   deploy: {
-    name: '程式上線', type: 4,
+    name: '程式上線', cats: [4, 3], scene: 'launch',
     low: '封版', friday: '週五不部署',
     tips: { good: '時機成熟，照檢查清單穩穩發布。', fair: '可以上線，但先確認回滾方案。', bad: '能延則延；非上不可就縮小範圍、全程盯監控。' },
     stories: {
@@ -61,7 +62,7 @@ export const ITEMS = {
     },
   },
   fish: {
-    name: '餵魚/澆花', type: 5,
+    name: '餵魚/澆花', cats: [5, 3], scene: 'pond',
     tips: { good: '生活小事做起來特別療癒，順便放空。', fair: '記得就好，別忘了換水。', bad: '容易忘記或手滑，設個提醒吧。' },
     stories: {
       good: '午休時小易給窗邊的盆栽澆水，魚缸裡的小金魚游過來討食。看著水面一圈圈漣漪，卡住的難題突然鬆開了。',
@@ -70,7 +71,7 @@ export const ITEMS = {
     },
   },
   memo: {
-    name: '寫公文', type: 1,
+    name: '寫公文', cats: [3, 1], scene: 'write',
     tips: { good: '文思通順，公文一次過關。', fair: '照範本走，格式先對齊。', bad: '容易寫錯字或漏附件，送出前多看一遍。' },
     stories: {
       good: '小易打開公文範本，主旨、說明、辦法一氣呵成，主管只改了一個標點就蓋章。今天寫什麼都順。',
@@ -79,7 +80,7 @@ export const ITEMS = {
     },
   },
   reimburse: {
-    name: '核對報帳', type: 2,
+    name: '核對報帳', cats: [1, 3], scene: 'bug',
     high: '一分不差',
     tips: { good: '眼明手快，帳一對就平。', fair: '一張一張對，慢慢來比較快。', bad: '容易看錯數字，先放著，找人覆核。' },
     stories: {
@@ -89,7 +90,7 @@ export const ITEMS = {
     },
   },
   schedule: {
-    name: '排行程', type: 3,
+    name: '排行程', cats: [3, 0], scene: 'build',
     tips: { good: '時間一排就順，適合規劃下週。', fair: '先排重要的，留點緩衝。', bad: '容易撞期，排完請對方再確認一次。' },
     stories: {
       good: '三個部門、五位主管的會議，小易一次就找到大家都有空的時段，連會議室都順利借到。',
@@ -98,7 +99,7 @@ export const ITEMS = {
     },
   },
   approval: {
-    name: '送簽呈', type: 4,
+    name: '送簽呈', cats: [4, 0], scene: 'launch',
     low: '退件', friday: '主管不在',
     tips: { good: '時機成熟，送上去很快就會批。', fair: '可以送，先把理由寫清楚。', bad: '容易被退件，能等就等主管心情好的時候。' },
     stories: {
@@ -108,7 +109,7 @@ export const ITEMS = {
     },
   },
   teatime: {
-    name: '午茶摸魚', type: 5,
+    name: '午茶摸魚', cats: [5, 0], scene: 'pond',
     tips: { good: '下午茶時間到，喘口氣反而效率更好。', fair: '小歇一下就好，別聊太久。', bad: '今天摸魚容易被抓，休息要光明正大。' },
     stories: {
       good: '三點，同事揪團買手搖飲，小易點了半糖微冰，聊著聊著，下午卡住的流程就有了解法。',
@@ -117,7 +118,8 @@ export const ITEMS = {
     },
   },
   group: {
-    name: '小組討論', type: 0,
+    name: '小組討論', cats: [0, 2], scene: 'meet',
+    monday: '週一沒人回',
     tips: { good: '大家意見很合，分工一次搞定。', fair: '先訂好議題，避免聊到離題。', bad: '容易各說各話，先在群組把重點打出來。' },
     stories: {
       good: '小組討論只花了二十分鐘，題目定了、分工排好，還有人自願做簡報。小易覺得這組穩了。',
@@ -126,7 +128,7 @@ export const ITEMS = {
     },
   },
   homework: {
-    name: '寫作業', type: 1,
+    name: '寫作業', cats: [3, 1], scene: 'write',
     tips: { good: '腦袋清楚，一口氣寫完的好時機。', fair: '分段寫，寫一題休息一下。', bad: '容易卡關，先看範例或問同學。' },
     stories: {
       good: '小易打開作業，題目一看就懂，晚餐前就寫完了，還有時間預習明天的課。',
@@ -135,7 +137,7 @@ export const ITEMS = {
     },
   },
   exam: {
-    name: '考試', type: 2,
+    name: '考試', cats: [1, 4], scene: 'bug',
     high: '金榜題名',
     tips: { good: '思路清晰，會的都能寫對。', fair: '先寫會的，難題留到最後。', bad: '容易粗心，交卷前檢查一遍。' },
     stories: {
@@ -145,7 +147,7 @@ export const ITEMS = {
     },
   },
   project: {
-    name: '做專題', type: 3,
+    name: '做專題', cats: [2, 3], scene: 'build',
     tips: { good: '適合動手做，把架構搭起來。', fair: '小步推進，每天做一點。', bad: '不宜大改方向，先把計畫寫清楚。' },
     stories: {
       good: '小易把專題拆成五個部分，今天一口氣做完兩個，指導老師說進度超前。',
@@ -154,8 +156,8 @@ export const ITEMS = {
     },
   },
   present: {
-    name: '上台報告', type: 4,
-    low: '忘詞', friday: '沒人在聽',
+    name: '上台報告', cats: [0, 4], scene: 'meet',
+    low: '忘詞', monday: '週一沒精神',
     tips: { good: '台風穩健，該上台就上台。', fair: '可以上，先多排練一次。', bad: '容易忘詞，能換順序就換到後面。' },
     stories: {
       good: '小易上台時投影片一張張順順地翻，問答時間還被老師稱讚觀點有趣。',
@@ -164,7 +166,7 @@ export const ITEMS = {
     },
   },
   nap: {
-    name: '補眠', type: 5,
+    name: '補眠', cats: [5, 2], scene: 'pond',
     tips: { good: '睡個好覺，醒來精神百倍。', fair: '小睡二十分鐘剛剛好。', bad: '容易睡過頭，記得設鬧鐘。' },
     stories: {
       good: '午休小易趴著睡了二十分鐘，醒來神清氣爽，下午的課一點都不想睡。',
@@ -173,7 +175,7 @@ export const ITEMS = {
     },
   },
   dinner: {
-    name: '聚餐約會', type: 0,
+    name: '聚餐約會', cats: [0, 5], scene: 'meet',
     tips: { good: '聊得來，適合約人、拉近關係。', fair: '照常赴約，話題輕鬆就好。', bad: '容易話不投機，敏感話題先別碰。' },
     stories: {
       good: '和老朋友約吃飯，從大學聊到現在，小易笑到肚子痛，約好下個月再聚。',
@@ -182,7 +184,7 @@ export const ITEMS = {
     },
   },
   reading: {
-    name: '讀書', type: 1,
+    name: '讀書', cats: [1, 5], scene: 'write',
     tips: { good: '專注力高，讀什麼都吸收得進去。', fair: '一次讀一章，做點筆記。', bad: '容易分心，先把手機收起來。' },
     stories: {
       good: '小易翻開放了好久的那本書，一口氣讀完三章，還寫了一頁心得。',
@@ -191,8 +193,8 @@ export const ITEMS = {
     },
   },
   finance: {
-    name: '理財', type: 2,
-    high: '財神到',
+    name: '理財', cats: [4, 1], scene: 'bug',
+    low: '住套房', high: '財神到', friday: '週五別梭哈',
     tips: { good: '判斷清楚，適合檢視帳戶、做規劃。', fair: '記帳、看看就好，不急著出手。', bad: '容易衝動，今天不宜大筆買賣。' },
     stories: {
       good: '小易把半年的帳整理成表，發現每月訂閱多花了八百元，一口氣退掉三個，心情超好。',
@@ -201,7 +203,7 @@ export const ITEMS = {
     },
   },
   tidy: {
-    name: '整理房間', type: 3,
+    name: '整理房間', cats: [3, 5], scene: 'build',
     tips: { good: '行動力強，一口氣整理到底。', fair: '一次整理一個角落就好。', bad: '容易越整越亂，先決定要丟什麼。' },
     stories: {
       good: '小易從書桌開始整理，越整越起勁，最後連衣櫃都換季了，房間像新的一樣。',
@@ -210,7 +212,7 @@ export const ITEMS = {
     },
   },
   trip: {
-    name: '出遊', type: 4,
+    name: '出遊', cats: [4, 5], scene: 'launch',
     low: '宅在家', friday: '週五塞車',
     tips: { good: '說走就走，出門一路順。', fair: '可以出門，先查好天氣和交通。', bad: '容易塞車或下雨，能改期就改期。' },
     stories: {
@@ -220,7 +222,7 @@ export const ITEMS = {
     },
   },
   workout: {
-    name: '運動', type: 5,
+    name: '運動', cats: [5, 3], scene: 'pond',
     tips: { good: '體力充沛，適合動一動、流個汗。', fair: '輕鬆動一下，伸展也算數。', bad: '容易拉傷，今天強度放低。' },
     stories: {
       good: '小易下班去慢跑，跑完五公里還不覺得累，回家洗個澡睡得特別好。',
@@ -230,7 +232,7 @@ export const ITEMS = {
   },
 }
 
-/** 樣板：每個樣板依事類 0–5 各一個事項。第一個為預設 */
+/** 樣板：每個樣板六個事項。第一個為預設（與核心的 DEFAULT_ITEMS 相同） */
 export const TEMPLATES = [
   { id: 'eng', name: '工程師', sel: ['meeting', 'report', 'debug', 'develop', 'deploy', 'fish'] },
   { id: 'admin', name: '行政', sel: ['meeting', 'memo', 'reimburse', 'schedule', 'approval', 'teatime'] },
@@ -240,11 +242,11 @@ export const TEMPLATES = [
 
 export const DEFAULT_SEL = TEMPLATES[0].sel
 
-/** 事項選擇是否合法：六個代號，第 i 個必須是事類 i 的事項 */
-export const validSel = sel => Array.isArray(sel) && sel.length === 6 && sel.every((id, i) => ITEMS[id]?.type === i)
+/** 事項選擇是否合法：六個不重複且存在的事項代號 */
+export const validSel = sel => Array.isArray(sel) && sel.length === 6 && new Set(sel).size === 6 && sel.every(id => Object.hasOwn(ITEMS, id))
 
-/** 事項選擇 → 評分用的事項 { id, name, type } */
-export const resolveSel = sel => (validSel(sel) ? sel : DEFAULT_SEL).map(id => ({ id, name: ITEMS[id].name, type: ITEMS[id].type }))
+/** 事項選擇 → 評分用的事項 { id, name, cats } */
+export const resolveSel = sel => (validSel(sel) ? sel : DEFAULT_SEL).map(id => ({ id, name: ITEMS[id].name, cats: ITEMS[id].cats }))
 
 /** 目前選擇符合哪個樣板；都不符合為 null */
 export const templateOf = sel => TEMPLATES.find(t => t.sel.every((id, i) => id === sel[i])) || null
@@ -270,8 +272,8 @@ export const tipFor = (s, level) => ITEMS[s.id]?.tips[level] ?? ''
 export const storyFor = (s, level) => ITEMS[s.id]?.stories[level] ?? null
 export const stampsOf = s => ITEMS[s.id] || {}
 
-/** 事項的循環動畫：依事類 */
-export const sceneFor = s => SCENES[DEFAULT_ITEMS[s.type].name]
+/** 事項的循環動畫 */
+export const sceneFor = s => SCENES[ITEMS[s.id]?.scene] || SCENES.meet
 
 /** 八卦性質，以三位碼為索引 */
 export const TRAITS = ['柔順承載', '發動開創', '險陷深入', '喜悅言說', '止靜', '光明清晰', '滲透溝通', '剛健主導']
@@ -299,7 +301,7 @@ const LANTERN = `
 
 /** 各活動的循環動畫，viewBox 240×150 */
 const SCENES = {
-  '開會': `
+  meet: `
     <svg class="scene scene-meet" viewBox="0 0 240 150" role="img" aria-label="會議桌旁，四人輪流發言">
       <g class="p p1"><circle class="ink head" cx="76" cy="52" r="8"/><path class="ink" d="M62 74 Q76 58 90 74 Z"/></g>
       <g class="p p2"><circle class="ink head" cx="164" cy="52" r="8"/><path class="ink" d="M150 74 Q164 58 178 74 Z"/></g>
@@ -315,7 +317,7 @@ const SCENES = {
       <g class="bubble b4"><rect class="paper line" x="182" y="50" width="34" height="20" rx="6"/><path class="paper line" d="M194 70 l4 6 l3 -6"/><circle class="ink" cx="191" cy="60" r="2"/><circle class="ink" cx="199" cy="60" r="2"/><circle class="ink" cx="207" cy="60" r="2"/></g>
     </svg>`,
 
-  '撰寫報告': `
+  write: `
     <svg class="scene scene-write" viewBox="0 0 240 150" role="img" aria-label="毛筆在紙上逐行書寫">
       <g class="cycle">
         <path class="paper line" d="M70 14 H154 L170 30 V136 H70 Z"/>
@@ -330,7 +332,7 @@ const SCENES = {
       </g>
     </svg>`,
 
-  '抓BUG': `
+  bug: `
     <svg class="scene scene-bug" viewBox="0 0 240 150" role="img" aria-label="放大鏡在程式碼中追到一隻蟲">
       <path class="code" d="M28 28 H64 M72 28 H112 M40 46 H96 M104 46 H124 M40 64 H80 M52 82 H120 M52 100 H88 M96 100 H132 M40 118 H76 M28 136 H52"/>
       <g class="bug">
@@ -346,7 +348,7 @@ const SCENES = {
       </g>
     </svg>`,
 
-  '系統開發': `
+  build: `
     <svg class="scene scene-build" viewBox="0 0 240 150" role="img" aria-label="積木一塊塊堆成樓閣">
       <path class="line" d="M40 135 H200"/>
       <g class="cycle">
@@ -360,7 +362,7 @@ const SCENES = {
       </g>
     </svg>`,
 
-  '程式上線': `
+  launch: `
     <svg class="scene scene-launch" viewBox="0 0 240 150" role="img" aria-label="天燈從山間冉冉升起">
       <path class="wash" d="M0 150 V128 Q40 108 80 122 T160 116 T240 124 V150 Z"/>
       <path class="line faint-line" d="M0 128 Q40 108 80 122 T160 116 T240 124"/>
@@ -372,7 +374,7 @@ const SCENES = {
       <circle class="spark s3" cx="160" cy="112" r="1.4"/>
     </svg>`,
 
-  '餵魚/澆花': `
+  pond: `
     <svg class="scene scene-pond" viewBox="0 0 240 150" role="img" aria-label="錦鯉在池中繞游，飼料落下泛起漣漪">
       <circle class="wash line" cx="120" cy="76" r="60"/>
       <circle class="leaf" cx="162" cy="114" r="13"/>

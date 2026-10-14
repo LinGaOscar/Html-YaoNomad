@@ -3,7 +3,7 @@
 /** 結果頁：自己的卦例（#/r/<id>）與朋友分享的卦（#v-...） */
 
 import { fullName, TRIGRAMS } from './core/hexagrams.js'
-import { AFFINITY, LAUNCH, FRIDAY_PENALTY } from './core/scoring.js'
+import { AFFINITY, CATEGORIES, FORTUNE } from './core/scoring.js'
 import { castKind, evaluate, todayDaily } from './core/progress.js'
 import { encodeShare, decodeShare } from './core/share.js'
 import { TRAITS, relation, tipFor, storyFor, stampsOf, sceneFor, DEFAULT_SEL, resolveSel, selToCode, codeToSel } from './activities.js'
@@ -14,7 +14,6 @@ import {
   loadHistory, addRecord, updateRecord, unlockedNow, announceUnlocks,
 } from './ui.js'
 
-const ANALYZE = 2
 
 // ---------- 片段 ----------
 
@@ -40,36 +39,65 @@ function readingHTML(title, hex, movingLines) {
     </article>`
 }
 
-/** 評分卡上的印章彩蛋，文字依事項而定 */
+/** 評分卡上的印章彩蛋：文字依事項而定，週五／週一只看主分類是否套用該規則 */
 function stampFor(s) {
   const st = stampsOf(s)
-  if (s.type === LAUNCH && s.score < 10) return st.low || '封版'
-  if (s.type === ANALYZE && s.score >= 90) return st.high || '明察秋毫'
-  if (s.friday) return st.friday || '週五不部署'
+  const ruled = rule => s.rules.some(r => r.rule === rule && r.cat === s.cats[0])
+  if (s.score < 10 && st.low) return st.low
+  if (s.score >= 90 && st.high) return st.high
+  if (ruled('friday') && st.friday) return st.friday
+  if (ruled('monday') && st.monday) return st.monday
   return null
 }
 
-const shareCode = record => encodeShare({ values: record.values, time: record.time, sel: selToCode(record.sel || DEFAULT_SEL) })
+const shareCode = record => encodeShare({
+  values: record.values, time: record.time, streak: record.streak || 0, sel: selToCode(record.sel || DEFAULT_SEL),
+})
 
-/** 為什麼是這個分數：用上下卦的性質說明，再補上變卦、變爻與週五的影響 */
+const catLabel = s => (s.cats[1] !== undefined && s.cats[1] !== s.cats[0]
+  ? `${CATEGORIES[s.cats[0]]} · ${CATEGORIES[s.cats[1]]}`
+  : CATEGORIES[s.cats[0]])
+
+const RULE_TEXT = {
+  monday: () => '起卦日是週一，溝通類扣 10 分（週一症候群）',
+  calm: () => '六爻皆靜、局勢清楚，分析類加 8 分',
+  change: d => `變中生新，創意類加 ${d} 分`,
+  streak: d => `連續起卦有恆，例行類加 ${d} 分`,
+  friday: () => '起卦日是週五，古訓「週五不部署」，時運類扣 15 分',
+  weekend: () => '週末好好休息，休養類加 10 分',
+}
+
+/** 為什麼是這個分數：主副分類、上下卦對主分類的影響、變卦，以及套用的專屬規則 */
 function whyText(s, result) {
+  const [p, q = p] = s.cats
   const part = (label, code) => {
     const t = TRIGRAMS[code]
-    return `${label}${t.name}為${t.image}，主${TRAITS[code]}，對${s.name}${relation(AFFINITY[code][s.type])}`
+    return `${label}${t.name}為${t.image}，主${TRAITS[code]}，對${CATEGORIES[p]}類${relation(AFFINITY[code][p])}`
   }
-  const { present, future, lines } = result
-  let text = present.upper === present.lower
+  const { present, future } = result
+  let text = q === p
+    ? `${s.name}屬${CATEGORIES[p]}類。`
+    : `${s.name}以${CATEGORIES[p]}類為主（七成），兼看${CATEGORIES[q]}類（三成）。`
+  text += present.upper === present.lower
     ? `本卦${fullName(present)}，${part('上下皆', present.lower)}。`
     : `本卦${fullName(present)}：${part('下卦', present.lower)}；${part('上卦', present.upper)}。`
+  if (p === FORTUNE) text += '時運類以外卦為主，起伏也比較大。'
   if (future) {
     const diff = s.future - s.present
     const move = diff > 3 ? '把分數往上帶' : diff < -3 ? '把分數往下拉' : '對分數影響不大'
     text += `變卦${fullName(future)}佔四分之一，${move}。`
   }
-  const moving = lines.filter(l => l.changing).length
-  if (s.type === LAUNCH && moving) text += `另有 ${moving} 個變爻，局勢未定，再扣 ${moving * 4} 分。`
-  if (s.friday) text += `起卦日是週五，古訓「週五不部署」，再扣 ${FRIDAY_PENALTY} 分。`
+  if (s.rules.length) {
+    text += s.rules.map(r => RULE_TEXT[r.rule](r.delta) + (r.weight < 1 ? `，計入${r.weight >= 0.7 ? '七' : '三'}成` : '')).join('；') + '。'
+  }
   return text
+}
+
+/** 今日六類：每類一個小格，依分數上色 */
+function categoriesHTML(categories) {
+  const lv = n => (n >= 70 ? 'good' : n < 40 ? 'bad' : 'fair')
+  return `<ul class="cat-strip" aria-label="今日六類分數">${categories.map(c =>
+    `<li class="${lv(c.score)}"><span>${c.name}</span><b>${c.score}</b>${c.rules.length ? '<i aria-hidden="true">•</i>' : ''}</li>`).join('')}</ul>`
 }
 
 function detailHTML(s, result) {
@@ -153,6 +181,8 @@ function copyText(ctx) {
     `六爻（初→上）：${lines.map(l => l.value).join(' ')}`,
     '',
     `今日一句：${present.motto}`,
+    '',
+    `今日六類：${ctx.categories.map(c => `${c.name} ${c.score}`).join('、')}`,
     '',
     '六事評分：',
     ...scores.map(s => `  ${s.name} ${s.score}（${LEVEL[s.level]}）${stampFor(s) ? `［${stampFor(s)}］` : ''}`),
@@ -264,12 +294,13 @@ function renderView(ctx) {
       <section>
         <div class="sec-head"><h2>六事評分</h2><span>宜 ${good.length} · 平 ${fair} · 忌 ${bad.length}</span></div>
         <p class="summary">宜：${listText(good)}<br>忌：${listText(bad, 'bad')}</p>
+        ${categoriesHTML(ctx.categories)}
         <div class="score-grid">
           ${scores.map((s, i) => {
             const stamp = stampFor(s)
             return `
             <button class="score ${s.level}" type="button" aria-expanded="false" aria-controls="score-detail" style="animation-delay:${0.1 + i * 0.07}s">
-              <span class="score-name">${esc(s.name)}</span>
+              <span class="score-name">${esc(s.name)}<small class="cats">${catLabel(s)}</small></span>
               <span class="chip">${LEVEL[s.level]}</span>
               <span class="num"><b>${s.score}</b><small>/100</small></span>
               <span class="meter" aria-hidden="true"><i style="width:${s.score}%"></i></span>
@@ -280,7 +311,7 @@ function renderView(ctx) {
             </button>`
           }).join('')}
         </div>
-        <p class="fine note">點任一項可展開白話說明與小故事。分數依本卦（75%）與變卦（25%）上下卦的取象計算，變爻越多、遇上週五都不利發布；僅供參考，請依實際情況判斷。</p>
+        <p class="fine note">點任一項可展開白話說明與小故事。每件事由主分類（七成）與副分類（三成）組成；六類各有專屬規則，有規則加減的類別標上圓點。僅供參考，請依實際情況判斷。</p>
       </section>
 
       <div class="r-grid">
@@ -464,6 +495,7 @@ export async function renderShared(token, code) {
   const hexagrams = await loadHexagrams()
   if (isStale(token)) return
   const record = { id: 'shared', time: data.time, method: 'coin', values: data.values, coins: null, sel, items: resolveSel(sel) }
+  if (data.streak > 1) record.streak = data.streak
   const ev = evaluate(hexagrams, record)
   renderView({ ...ev, record, kind: 'shared', own: false, hexagrams, daily: null, code: shareCode(record) })
 }

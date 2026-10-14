@@ -26,3 +26,12 @@ test('分享碼：不合法時回傳 null', () => {
     assert.strictEqual(decodeShare(bad), null, bad)
   }
 })
+
+test('分享碼：連續天數大於 1 才帶，且可與事項選擇並存', () => {
+  assert.strictEqual(encodeShare({ values: [7, 7, 7, 7, 7, 7], time, streak: 1 }), 'v-777777-20261016')
+  const code = encodeShare({ values: [7, 7, 7, 7, 7, 7], time, streak: 3, sel: 'student' })
+  assert.strictEqual(code, 'v-777777-20261016-s3-student')
+  const back = decodeShare(code)
+  assert.deepStrictEqual([back.streak, back.sel], [3, 'student'])
+  assert.strictEqual(decodeShare('v-777777-20261016').streak, 0)
+})

@@ -602,6 +602,29 @@ h1, h2, h3, p { margin: 0; }
 .score.good { border-top-color: var(--good); }
 .score.bad { border-top-color: var(--bad); }
 .score .score-name { grid-area: name; font-size: 1rem; font-weight: 700; letter-spacing: 0.08em; }
+.score .cats { display: block; margin-top: 1px; font-size: 0.7rem; font-weight: 400; color: var(--gold); letter-spacing: 0.12em; }
+
+.cat-strip { list-style: none; margin: 0 0 14px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+@media (min-width: 680px) { .cat-strip { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.cat-strip li {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--line-soft);
+  border-bottom: 2px solid var(--fair);
+  border-radius: 3px;
+  background: var(--card);
+  font-size: 0.82rem;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+.cat-strip li.good { border-bottom-color: var(--good); }
+.cat-strip li.bad { border-bottom-color: var(--bad); }
+.cat-strip b { font-size: 1.05rem; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.cat-strip i { position: absolute; top: 1px; right: 4px; font-style: normal; font-size: 0.7rem; line-height: 1; color: var(--gold); }
 .score .chip {
   grid-area: chip;
   align-self: start;
@@ -1060,7 +1083,7 @@ details.card[open] > summary { border-bottom: 1px solid var(--line-soft); }
 .score .stamp {
   --rot: -12deg;
   position: absolute;
-  top: 40px;
+  top: 54px;
   right: 10px;
   padding: 1px 7px;
   border: 2px solid var(--seal);
@@ -1121,6 +1144,7 @@ details.card[open] > summary { border-bottom: 1px solid var(--line-soft); }
 .acc-bar { height: 6px; background: var(--line-soft); border-radius: 3px; overflow: hidden; }
 .acc-bar i { display: block; height: 100%; background: var(--good); border-radius: 3px; }
 .acc-num { font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.acc-list li.none { color: var(--faint); }
 .empty-line { padding: 14px 16px; border: 1px dashed var(--line); border-radius: 4px; color: var(--muted); font-size: 0.9rem; }
 
 .dex { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
@@ -1168,7 +1192,7 @@ details.card[open] > summary { border-bottom: 1px solid var(--line-soft); }
 .tpl.on b::after { content: " ✓"; color: var(--gold); }
 .slots { display: grid; gap: 10px; }
 @media (min-width: 600px) { .slots { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.slot { display: grid; grid-template-columns: 4em minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 12px; background: var(--card); border: 1px solid var(--line-soft); border-radius: 4px; }
+.slot { display: grid; grid-template-columns: 3.5em minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 12px; background: var(--card); border: 1px solid var(--line-soft); border-radius: 4px; }
 .slot label { color: var(--gold); letter-spacing: 0.1em; font-size: 0.9rem; }
 .slot select {
   width: 100%;

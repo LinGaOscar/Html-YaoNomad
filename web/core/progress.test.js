@@ -69,9 +69,18 @@ test('summarize：圖鑑與成就', () => {
   assert.strictEqual(s.streak, 2)
 })
 
-test('summarize：週五發布類扣分可觸發「封版之日」', () => {
-  // 坤為地、六爻皆動：發布類原始低分 − 24（變爻）− 15（週五）
-  const friday = rec(at(2026, 10, 16), { values: [6, 6, 6, 6, 6, 6] })
-  const s = summarize(hexagrams, [friday], at(2026, 10, 16, 20))
+test('summarize：依六類分數解鎖「時運不濟」與「日日是好日」', () => {
+  const kan = rec(at(2026, 10, 14), { values: [8, 7, 8, 8, 7, 8] }) // 坎為水，時運類谷底
+  const habit = rec(at(2026, 10, 20), { streak: 6 })
+  const s = summarize(hexagrams, [kan, habit], at(2026, 10, 20, 20))
   assert.ok(s.unlocked.has('freeze'))
+  assert.ok(s.unlocked.has('habit'))
+  assert.ok(!s.unlocked.has('weekend'))
+})
+
+test('accuracy：依主分類統計', () => {
+  const a = accuracy([rec(at(2026, 10, 14), { feedback: [true, false, true] })])
+  // 預設六事：開會（溝通）、撰寫報告（分析）、抓BUG（分析）
+  assert.deepStrictEqual(a.byCat[0], { cat: 0, hit: 1, miss: 0 })
+  assert.deepStrictEqual(a.byCat[1], { cat: 1, hit: 1, miss: 1 })
 })

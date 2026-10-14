@@ -1,7 +1,7 @@
 'use strict'
 
 import { castFromLines } from './casting.js'
-import { DEFAULT_ITEMS, LAUNCH, scoreActivities } from './scoring.js'
+import { DEFAULT_ITEMS, ANALYZE, CREATE, ROUTINE, FORTUNE, REST, scoreActivities, scoreCategories } from './scoring.js'
 
 /**
  * 使用者進度：今日一卦、連續天數、圖鑑、成就、應驗準度。
@@ -70,20 +70,23 @@ export function bestStreak(records) {
   return best
 }
 
-/** 計算一筆紀錄的卦象與評分；爻值不合法時回傳 null */
+/** 計算一筆紀錄的卦象、六類分數與六事評分；爻值不合法時回傳 null */
 export function evaluate(hexagrams, rec) {
   try {
     const result = castFromLines(hexagrams, typeof rec.question === 'string' ? rec.question : '', rec.values)
-    const scores = scoreActivities(result, { items: rec.items || DEFAULT_ITEMS, date: new Date(rec.time) })
-    return { result, scores }
+    const date = new Date(rec.time)
+    const categories = scoreCategories(result, { date, streak: rec.streak || 0 })
+    const scores = scoreActivities(result, { items: rec.items || DEFAULT_ITEMS, categories })
+    return { result, categories, scores }
   } catch {
     return null
   }
 }
 
-/** 應驗回饋統計；feedback[i] 為 true（準）、false（不準）或缺 */
+/** 應驗回饋統計；feedback[i] 為 true（準）、false（不準）或缺。byCat 依事項的主分類統計 */
 export function accuracy(records) {
   const byName = new Map()
+  const byCat = [0, 1, 2, 3, 4, 5].map(cat => ({ cat, hit: 0, miss: 0 }))
   let hit = 0
   let miss = 0
   let rated = 0
@@ -95,13 +98,15 @@ export function accuracy(records) {
       if (typeof v !== 'boolean' || !items[i]) return
       any = true
       const row = byName.get(items[i].name) || { name: items[i].name, hit: 0, miss: 0 }
+      const cat = byCat[items[i].cats?.[0]]
       if (v) { row.hit++; hit++ } else { row.miss++; miss++ }
+      if (cat) cat[v ? 'hit' : 'miss']++
       byName.set(items[i].name, row)
     })
     if (any) rated++
   }
   const total = hit + miss
-  return { hit, miss, total, rated, rate: total ? hit / total : null, byName: [...byName.values()] }
+  return { hit, miss, total, rated, rate: total ? hit / total : null, byName: [...byName.values()], byCat }
 }
 
 /** 成就；test 收到 summary（見 summarize） */
@@ -114,9 +119,12 @@ export const ACHIEVEMENTS = [
   { id: 'reunion', name: '舊識重逢', desc: '同一卦遇見 3 次', test: s => s.maxRepeat >= 3 },
   { id: 'half', name: '半部易經', desc: '收集 32 卦', test: s => s.collection.size >= 32 },
   { id: 'all', name: '六十四卦全', desc: '收集全部 64 卦', test: s => s.collection.size >= 64 },
-  { id: 'fridayHero', name: '週五勇者', desc: '週五起卦，發布類仍有 70 分以上', test: s => s.fridayHero },
-  { id: 'freeze', name: '封版之日', desc: '發布類分數低於 10 分', test: s => s.freeze },
-  { id: 'debugGod', name: '除錯之神', desc: '分析類分數 90 分以上', test: s => s.debugGod },
+  { id: 'fridayHero', name: '週五勇者', desc: '週五起卦，時運類仍有 70 分以上', test: s => s.fridayHero },
+  { id: 'freeze', name: '時運不濟', desc: '時運類分數低於 10 分', test: s => s.freeze },
+  { id: 'debugGod', name: '明察秋毫', desc: '分析類分數 90 分以上', test: s => s.debugGod },
+  { id: 'muse', name: '靈感爆發', desc: '創意類分數 95 分以上', test: s => s.muse },
+  { id: 'habit', name: '日日是好日', desc: '例行類拿到連續天數加成上限（連續 6 天）', test: s => s.habit },
+  { id: 'weekend', name: '偷得浮生', desc: '週末起卦，休養類 90 分以上', test: s => s.weekendRest },
   { id: 'profane', name: '再三瀆', desc: '同一個問題一天問了三次', test: s => s.profane },
   { id: 'feedback10', name: '知行合一', desc: '回饋 10 次應驗結果', test: s => s.accuracy.rated >= 10 },
   { id: 'oracle', name: '鐵口直斷', desc: '回饋 30 項以上且準度達 80%', test: s => s.accuracy.total >= 30 && s.accuracy.rate >= 0.8 },
@@ -125,7 +133,8 @@ export const ACHIEVEMENTS = [
 /**
  * 彙整所有進度
  * @returns {{ count: number, streak: number, best: number, collection: Map<number, {count: number, latest: object}>,
- *   maxRepeat: number, allMoving: boolean, fridayHero: boolean, freeze: boolean, debugGod: boolean, profane: boolean,
+ *   maxRepeat: number, allMoving: boolean, fridayHero: boolean, freeze: boolean, debugGod: boolean, muse: boolean,
+ *   habit: boolean, weekendRest: boolean, profane: boolean,
  *   accuracy: ReturnType<typeof accuracy>, unlocked: Set<string> }}
  */
 export function summarize(hexagrams, records, now = Date.now()) {
@@ -139,6 +148,9 @@ export function summarize(hexagrams, records, now = Date.now()) {
     fridayHero: false,
     freeze: false,
     debugGod: false,
+    muse: false,
+    habit: false,
+    weekendRest: false,
     profane: false,
     accuracy: accuracy(records),
     unlocked: new Set(),
@@ -153,11 +165,14 @@ export function summarize(hexagrams, records, now = Date.now()) {
     s.collection.set(n, entry)
     s.maxRepeat = Math.max(s.maxRepeat, entry.count)
     if (ev.result.lines.every(l => l.changing)) s.allMoving = true
-    for (const sc of ev.scores) {
-      if (sc.type === LAUNCH && sc.friday && sc.score >= 70) s.fridayHero = true
-      if (sc.type === LAUNCH && sc.score < 10) s.freeze = true
-      if (sc.type === 2 && sc.score >= 90) s.debugGod = true
-    }
+    const c = ev.categories
+    const has = (cat, rule) => c[cat].rules.some(r => r.rule === rule)
+    if (has(FORTUNE, 'friday') && c[FORTUNE].score >= 70) s.fridayHero = true
+    if (c[FORTUNE].score < 10) s.freeze = true
+    if (c[ANALYZE].score >= 90) s.debugGod = true
+    if (c[CREATE].score >= 95) s.muse = true
+    if (c[ROUTINE].rules.some(r => r.rule === 'streak' && r.delta >= 10)) s.habit = true
+    if (has(REST, 'weekend') && c[REST].score >= 90) s.weekendRest = true
     if (castKind(records, rec) === 'profane') s.profane = true
   }
   for (const a of ACHIEVEMENTS) if (a.test(s)) s.unlocked.add(a.id)
