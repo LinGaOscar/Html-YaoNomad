@@ -231,9 +231,18 @@ h1, h2, h3, p { margin: 0; }
   to { opacity: 1; filter: blur(0); transform: none; }
 }
 
-.version {
-  align-self: flex-end;
+.ver-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-top: -8px;
+}
+.ver-sign {
+  font-size: 0.8rem;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+}
+.version {
   padding: 3px 10px;
   font-size: 0.8rem;
   color: var(--muted);
@@ -242,7 +251,7 @@ h1, h2, h3, p { margin: 0; }
   border-radius: 4px;
   letter-spacing: 0.04em;
 }
-@media (min-width: 900px) { .version { display: none; } }
+@media (min-width: 900px) { .ver-row { display: none; } }
 
 .toast {
   position: fixed;

@@ -128,7 +128,7 @@ async function renderHome(token) {
       </div>
       <p class="six">問事：${askNames}<a class="six-edit" href="#/book/ask">調整</a></p>
       <footer class="home-foot"><span>三錢六擲，由下成卦</span><span>本機運算 · 離線可用</span></footer>
-      <span class="version">${VERSION}</span>
+      <div class="ver-row"><span class="ver-sign">菱菱角角</span><span class="version">${VERSION}</span></div>
     </section>`)
 
   const input = node.querySelector('#question')
