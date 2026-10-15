@@ -6,7 +6,7 @@ import { TRIGRAMS } from './core/hexagrams.js'
 import { ACHIEVEMENTS, currentStreak, summarize } from './core/progress.js'
 import { TEMPLATES, EXTRA_IDS, DEFAULT_TPLS, isOldTpl, newTplOf, tplsToSel, askSel, resolveSel } from './activities.js'
 
-export const VERSION = 'V3.34'
+export const VERSION = 'V3.35'
 export const LINE_POS = ['初爻', '二爻', '三爻', '四爻', '五爻', '上爻']
 export const LINE_KIND = { 6: '老陰（變）', 7: '少陽', 8: '少陰', 9: '老陽（變）' }
 export const COIN_FACE = { 2: '正', 3: '背' }

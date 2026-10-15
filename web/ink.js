@@ -2,6 +2,10 @@
 
 /**
  * 水墨粒子背景：墨點沿流場漂移、留下淡淡墨痕；起卦時向中心聚攏，成卦時暈開。
+ * 平時三種主題循環（各 40 秒，切換時 5 秒內漸變，角落短暫浮出主題名）：
+ * - 雲湧：墨點隨橫向起伏的氣流翻湧，雲霧加濃
+ * - 崑崙：墨點沿層疊山脊沉積成山形，少數如雪緩緩飄落
+ * - 明鏡：墨點繞畫面中心靜靜成環，水面不時盪開漣漪
  * 只負責視覺，與卜卦邏輯無關。
  */
 
@@ -15,6 +19,62 @@ let inkRGB = '38,48,43'
 let pointer = { x: -9999, y: -9999 }
 let running = false
 let t = 0
+
+const THEMES = [
+  { name: '雲湧', mist: 2.2, mistSize: 1.7 },
+  { name: '崑崙', mist: 0.8, mistSize: 1 },
+  { name: '明鏡', mist: 0.45, mistSize: 1 },
+]
+const THEME_SEC = 40
+const FADE_SEC = 5
+const LABEL_SEC = 7
+const clock0 = performance.now()
+let ripples = []
+let lastRipple = 0
+
+const smooth = x => x * x * (3 - 2 * x)
+/** 目前主題、上一個主題與漸變權重（0 → 1） */
+function themeState() {
+  const sec = (performance.now() - clock0) / 1000
+  const n = Math.floor(sec / THEME_SEC)
+  const local = sec - n * THEME_SEC
+  return { cur: n % THEMES.length, prev: (n + THEMES.length - 1) % THEMES.length, k: n === 0 ? 1 : smooth(Math.min(1, local / FADE_SEC)), local, first: n === 0 }
+}
+
+/** 崑崙：三層山脊的高度（layer -1 最遠最高）；1 − |sin| 讓山峰尖、山谷圓 */
+const ridge = (x, layer) => {
+  const peaks = 1 - Math.abs(Math.sin(x * (0.0042 - layer * 0.0008) + layer * 1.9))
+  return h * (0.5 + layer * 0.09) - h * (0.13 - layer * 0.025) * peaks ** 1.6 - h * 0.012 * Math.sin(x * 0.02 + layer)
+}
+
+/** 各主題對單一墨點的加速度 */
+function themeForce(i, p) {
+  const frac = (p.seed % 1 + 1) % 1
+  if (i === 0) {
+    // 雲湧：往右的氣流，上下翻捲
+    const roll = Math.sin(p.y * 0.008 + t * 0.006 + p.seed) * 0.02
+    return {
+      ax: 0.022 + roll,
+      ay: Math.sin(p.x * 0.005 - t * 0.007 + p.seed) * 0.022 - 0.002,
+    }
+  }
+  if (i === 1) {
+    // 崑崙：四分之一的墨點如雪飄落，其餘沉到所屬山脊
+    if (frac < 0.25) return { ax: Math.sin(t * 0.01 + p.seed) * 0.006, ay: 0.012 }
+    const layer = Math.min(1, Math.floor((frac - 0.25) / 0.25) - 1) // -1、0、1 三層
+    const ty = ridge(p.x, layer) + (frac * 97 % 1) * 40
+    return { ax: 0.007, ay: Math.max(-0.08, Math.min(0.08, (ty - p.y) * 0.003)) - p.vy * 0.04 }
+  }
+  // 明鏡：繞中心成環
+  const cx = w / 2
+  const cy = h * 0.42
+  const R = (0.12 + frac * 0.42) * Math.min(w, h)
+  const dx = p.x - cx
+  const dy = p.y - cy
+  const d = Math.hypot(dx, dy) || 1
+  const pull = (R - d) * 0.0009
+  return { ax: (dx / d) * pull + (-dy / d) * 0.012, ay: (dy / d) * pull + (dx / d) * 0.012 }
+}
 
 export function initInk(el) {
   canvas = el
@@ -118,11 +178,21 @@ function step() {
   const cy = h * 0.4
   const speed = reduceMotion.matches ? 0.15 : 1
   const trailLen = mode === 'gather' ? 16 : 7
+  const th = themeState()
   for (const p of particles) {
-    // 流場：平滑的正弦組合，模擬水流中墨的飄移
+    // 流場：平滑的正弦組合，模擬水流中墨的飄移；再疊上主題的力（切換時新舊主題漸變）
     const ang = Math.sin(p.x * 0.0021 + t * 0.0021 + p.seed) * Math.cos(p.y * 0.0018 - t * 0.0016) * Math.PI
-    let ax = Math.cos(ang) * 0.02
-    let ay = Math.sin(ang) * 0.02 - 0.006
+    let ax = Math.cos(ang) * 0.008
+    let ay = Math.sin(ang) * 0.008
+    if (mode !== 'gather') {
+      const a = themeForce(th.cur, p)
+      const b = th.k < 1 ? themeForce(th.prev, p) : a
+      ax += a.ax * th.k + b.ax * (1 - th.k)
+      ay += a.ay * th.k + b.ay * (1 - th.k)
+    } else {
+      ax += Math.cos(ang) * 0.012
+      ay += Math.sin(ang) * 0.012 - 0.006
+    }
 
     if (mode === 'gather') {
       const dx = cx - p.x
@@ -160,10 +230,55 @@ function step() {
   }
   for (const b of blooms) b.age++
   blooms = blooms.filter(b => b.age < b.life)
+
+  // 明鏡：每隔幾秒在中心附近盪開一圈漣漪
+  if (mode !== 'gather' && th.cur === 2 && th.k > 0.5 && t - lastRipple > 240) {
+    lastRipple = t
+    ripples.push({ x: w / 2 + (Math.random() - 0.5) * w * 0.2, y: h * 0.42 + (Math.random() - 0.5) * h * 0.1, age: 0 })
+  }
+  for (const r of ripples) r.age++
+  ripples = ripples.filter(r => r.age < 360)
 }
 
 function draw() {
   ctx.clearRect(0, 0, w, h)
+  const th = themeState()
+  const mistGain = THEMES[th.cur].mist * th.k + THEMES[th.prev].mist * (1 - th.k)
+  const mistSize = THEMES[th.cur].mistSize * th.k + THEMES[th.prev].mistSize * (1 - th.k)
+
+  ctx.lineWidth = 1
+  for (const r of ripples) {
+    const k = r.age / 360
+    ctx.strokeStyle = `rgba(${inkRGB},${0.2 * (1 - k)})`
+    ctx.beginPath()
+    ctx.ellipse(r.x, r.y, 20 + k * Math.min(w, h) * 0.5, (20 + k * Math.min(w, h) * 0.5) * 0.35, 0, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+
+  // 崑崙：淡墨勾出三層山脊
+  const kunlun = th.cur === 1 ? th.k : th.prev === 1 ? 1 - th.k : 0
+  if (kunlun > 0.01 && mode !== 'gather') {
+    for (let layer = -1; layer <= 1; layer++) {
+      ctx.strokeStyle = `rgba(${inkRGB},${0.07 * kunlun * (1.4 - (layer + 1) * 0.35)})`
+      ctx.lineWidth = 1.6 - layer * 0.4
+      ctx.beginPath()
+      for (let x = 0; x <= w; x += 12) {
+        const y = ridge(x, layer)
+        if (x === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      }
+      ctx.stroke()
+    }
+  }
+
+  // 主題名：切換後在右下角淡淡浮現幾秒
+  if (th.local < LABEL_SEC && !th.first) {
+    const a = Math.sin(Math.PI * th.local / LABEL_SEC) * 0.32
+    ctx.fillStyle = `rgba(${inkRGB},${a})`
+    ctx.font = '500 15px "Noto Serif TC", serif'
+    ctx.textAlign = 'right'
+    ctx.fillText(THEMES[th.cur].name.split('').join(' '), w - 20, h - 18)
+  }
 
   for (const b of blooms) {
     const k = b.age / b.life
@@ -187,12 +302,13 @@ function draw() {
   ctx.lineJoin = 'round'
   for (const p of particles) {
     if (p.mist) {
-      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r)
-      g.addColorStop(0, `rgba(${inkRGB},${p.a})`)
+      const r = p.r * mistSize
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r)
+      g.addColorStop(0, `rgba(${inkRGB},${Math.min(0.2, p.a * mistGain)})`)
       g.addColorStop(1, `rgba(${inkRGB},0)`)
       ctx.fillStyle = g
       ctx.beginPath()
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2)
       ctx.fill()
       continue
     }
