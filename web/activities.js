@@ -235,22 +235,33 @@ export const ITEMS = {
 /** 問事範圍（樣板）：可複選，評分的事項為所選樣板的聯集 */
 export const TEMPLATES = [
   { id: 'life', name: '生活', sel: ['dinner', 'reading', 'finance', 'tidy', 'trip', 'workout'] },
-  { id: 'eng', name: '工程師', sel: ['meeting', 'report', 'debug', 'develop', 'deploy', 'fish'] },
-  { id: 'admin', name: '行政', sel: ['meeting', 'memo', 'reimburse', 'schedule', 'approval', 'teatime'] },
-  { id: 'student', name: '學生', sel: ['group', 'homework', 'exam', 'project', 'present', 'nap'] },
+  { id: 'work', name: '工作', sel: ['meeting', 'report', 'present', 'schedule', 'approval', 'teatime'] },
 ]
+
+/** 舊版樣板：介面不再顯示，只用來解讀舊分享碼與舊設定 */
+const OLD_TEMPLATES = [
+  { id: 'eng', sel: ['meeting', 'report', 'debug', 'develop', 'deploy', 'fish'] },
+  { id: 'admin', sel: ['meeting', 'memo', 'reimburse', 'schedule', 'approval', 'teatime'] },
+  { id: 'student', sel: ['group', 'homework', 'exam', 'project', 'present', 'nap'] },
+]
+const ALL_TEMPLATES = [...TEMPLATES, ...OLD_TEMPLATES]
+const TPL_MAP = new Map(ALL_TEMPLATES.map(t => [t.id, t]))
+export const isOldTpl = id => OLD_TEMPLATES.some(t => t.id === id)
 
 /** 預設問事：生活 */
 export const DEFAULT_TPLS = ['life']
 
 /** 未記錄事項的舊卦例沿用工程師（與核心的 DEFAULT_ITEMS 相同） */
-export const LEGACY_SEL = TEMPLATES[1].sel
+export const LEGACY_SEL = OLD_TEMPLATES[0].sel
 
-const TPL_IDS = new Set(TEMPLATES.map(t => t.id))
-export const validTpls = tpls => Array.isArray(tpls) && tpls.length > 0 && tpls.every(id => TPL_IDS.has(id))
+/** 所選樣板（含舊樣板）→ 事項代號（依樣板順序合併、去重） */
+export const tplsToSel = tpls => [...new Set(ALL_TEMPLATES.filter(t => tpls.includes(t.id)).flatMap(t => t.sel))]
 
-/** 所選樣板 → 事項代號（依樣板順序合併、去重） */
-export const tplsToSel = tpls => [...new Set(TEMPLATES.filter(t => tpls.includes(t.id)).flatMap(t => t.sel))]
+/** 問事 = 所選樣板的事項，再接上加選的事項（依事項池順序） */
+export function askSel({ tpls, extra }) {
+  const base = tplsToSel(tpls)
+  return [...base, ...Object.keys(ITEMS).filter(id => extra.includes(id) && !base.includes(id))]
+}
 
 /** 事項選擇是否合法：不重複且存在的事項代號 */
 export const validSel = sel => Array.isArray(sel) && sel.length > 0 && sel.length <= 30
@@ -259,25 +270,29 @@ export const validSel = sel => Array.isArray(sel) && sel.length > 0 && sel.lengt
 /** 事項選擇 → 評分用的事項 { id, name, cats } */
 export const resolveSel = sel => (validSel(sel) ? sel : LEGACY_SEL).map(id => ({ id, name: ITEMS[id].name, cats: ITEMS[id].cats }))
 
-/** 事項選擇剛好是哪幾個樣板的聯集；不是則為 null */
-export function tplsOf(sel) {
-  const tpls = TEMPLATES.filter(t => t.sel.every(id => sel.includes(id))).map(t => t.id)
-  const union = tplsToSel(tpls)
-  return union.length === sel.length && union.every((id, i) => id === sel[i]) ? tpls : null
-}
-
-/** 選擇 → 分享碼片段：樣板代號以 . 連接；舊卦例的非樣板組合用事項代號 */
+/**
+ * 選擇 → 分享碼片段：能由樣板開頭的就寫樣板代號，其餘接事項代號，以 . 連接（如 life.nap）；
+ * 解回來必須與原順序完全相同，否則全部寫事項代號
+ */
 export function selToCode(sel) {
-  const tpls = tplsOf(sel)
-  return tpls ? tpls.join('.') : sel.join('.')
+  const tpls = TEMPLATES.filter(t => t.sel.every(id => sel.includes(id))).map(t => t.id)
+  const base = tplsToSel(tpls)
+  const rest = sel.filter(id => !base.includes(id))
+  const decoded = [...base, ...rest]
+  if (tpls.length && decoded.every((id, i) => id === sel[i])) return [...tpls, ...rest].join('.')
+  return sel.join('.')
 }
 
-/** 分享碼片段 → 選擇；無片段為舊連結（工程師），無法解讀時為 null */
+/** 分享碼片段 → 選擇：每段是樣板代號（展開）或事項代號；無片段為舊連結（工程師），無法解讀時為 null */
 export function codeToSel(code) {
   if (!code) return LEGACY_SEL
-  const ids = code.split('.')
-  if (validTpls(ids)) return tplsToSel(ids)
-  return validSel(ids) ? ids : null
+  const out = []
+  for (const id of code.split('.')) {
+    const ids = TPL_MAP.has(id) ? TPL_MAP.get(id).sel : Object.hasOwn(ITEMS, id) ? [id] : null
+    if (!ids) return null
+    for (const x of ids) if (!out.includes(x)) out.push(x)
+  }
+  return validSel(out) ? out : null
 }
 
 /** 評分結果（帶 id）對應的提醒、小故事、印章 */

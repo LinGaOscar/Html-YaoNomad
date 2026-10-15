@@ -1039,7 +1039,7 @@ details.card[open] > summary { border-bottom: 1px solid var(--line-soft); }
 
 /* ===== 問事（卦簿內） ===== */
 .tpl-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-@media (min-width: 900px) { .tpl-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .tpl-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } .tpl-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .tpl {
   display: flex;
   flex-direction: column;
@@ -1152,3 +1152,21 @@ details.card.reading.fold[open] > summary { border-bottom: none; }
 #music-btn .mute-slash { opacity: 1; transition: opacity 0.2s; }
 #music-btn[aria-pressed="true"] .mute-slash { opacity: 0; }
 #music-btn[aria-pressed="true"] { color: var(--gold); border-color: var(--gold); }
+
+/* 問事：加選事項 */
+.ask-sub { margin-top: 6px; font-size: 0.85rem; color: var(--muted); letter-spacing: 0.12em; }
+.extra-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.extra {
+  padding: 5px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.extra:hover:not(:disabled) { border-color: var(--gold); color: var(--text); }
+.extra.on { border-style: solid; border-color: var(--gold); color: var(--gold); background: var(--gold-soft); }
+.extra:disabled { cursor: default; opacity: 0.55; }

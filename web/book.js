@@ -6,9 +6,9 @@ import { fullName, TRIGRAMS } from './core/hexagrams.js'
 import { castFromLines } from './core/casting.js'
 import { scoreCategories } from './core/scoring.js'
 import { ACHIEVEMENTS, summarize } from './core/progress.js'
-import { ITEMS, TEMPLATES, TRAITS } from './activities.js'
+import { ITEMS, TEMPLATES, TRAITS, tplsToSel, askSel } from './activities.js'
 import { soundState, setMusic, setSfx, brush } from './audio.js'
-import { esc, cnNum, formatDate, isStale, mount, toast, hw, loadHexagrams, bookRecords, bookSince, resetBook, loadTpls, saveTpls } from './ui.js'
+import { esc, cnNum, formatDate, isStale, mount, toast, hw, loadHexagrams, bookRecords, bookSince, resetBook, loadAsk, saveAsk } from './ui.js'
 
 /** 卦的小圖：六爻由下而上 */
 export function glyphHTML(hex) {
@@ -122,7 +122,8 @@ export async function renderBook(token, { focusAsk = false } = {}) {
   const hexagrams = await loadHexagrams()
   if (isStale(token)) return
   const s = summarize(hexagrams, records)
-  const tpls = loadTpls()
+  const ask = loadAsk()
+  const inTpl = tplsToSel(ask.tpls)
   const acc = s.accuracy
   const pct = (hit, total) => Math.round((hit / total) * 100)
 
@@ -167,16 +168,24 @@ export async function renderBook(token, { focusAsk = false } = {}) {
       </section>
 
       <section class="book-sec ask-sec" id="ask">
-        <div class="sec-head"><h2>問事</h2><span>可複選</span></div>
-        <p class="fine">選擇起卦時要占問的範圍，所選範圍的事項都會評分。只影響之後的新卦例。</p>
-        <div class="tpl-grid" role="group" aria-label="問事範圍">
+        <div class="sec-head"><h2>問事</h2><span>共 ${askSel(ask).length} 項</span></div>
+        <p class="fine">今日一卦要評分哪些事：選生活、工作（可複選），再加選想問的事項。只影響之後的新卦例。</p>
+        <div class="tpl-grid two" role="group" aria-label="問事範圍">
           ${TEMPLATES.map(t => {
-            const on = tpls.includes(t.id)
+            const on = ask.tpls.includes(t.id)
             return `
             <button class="tpl${on ? ' on' : ''}" type="button" aria-pressed="${on}" data-tpl="${t.id}">
               <b>${t.name}</b>
               <small>${t.sel.map(id => ITEMS[id].name).join('、')}</small>
             </button>`
+          }).join('')}
+        </div>
+        <p class="ask-sub">加選事項</p>
+        <div class="extra-grid" role="group" aria-label="加選事項">
+          ${Object.entries(ITEMS).map(([id, it]) => {
+            const fixed = inTpl.includes(id)
+            const on = fixed || ask.extra.includes(id)
+            return `<button class="extra${on ? ' on' : ''}" type="button" data-extra="${id}" aria-pressed="${on}"${fixed ? ' disabled title="已在所選樣板中"' : ''}>${esc(it.name)}</button>`
           }).join('')}
         </div>
       </section>
@@ -185,7 +194,7 @@ export async function renderBook(token, { focusAsk = false } = {}) {
         <div class="sec-head"><h2>聲音</h2><span>即時合成</span></div>
         <div class="tpl-grid" role="group" aria-label="聲音">
           <button class="tpl${sound.music ? ' on' : ''}" type="button" aria-pressed="${sound.music}" data-sound="music">
-            <b>背景音樂</b><small>原創〈墨韻〉· 電子節拍配古箏, 五聲音階</small>
+            <b>背景音樂</b><small>原創〈墨韻〉· 古箏為主, 淡淡電子節拍</small>
           </button>
           <button class="tpl${sound.sfx ? ' on' : ''}" type="button" aria-pressed="${sound.sfx}" data-sound="sfx">
             <b>點擊音效</b><small>毛筆掃過宣紙</small>
@@ -213,16 +222,26 @@ export async function renderBook(token, { focusAsk = false } = {}) {
     b.setAttribute('aria-pressed', String(on))
   }))
 
-  node.querySelectorAll('[data-tpl]').forEach(b => b.addEventListener('click', () => {
-    const id = b.dataset.tpl
-    const next = tpls.includes(id) ? tpls.filter(x => x !== id) : [...tpls, id]
-    if (!next.length) {
-      toast('至少要選一個問事範圍')
+  // 問事：樣板可複選、事項可加選，至少要有一項
+  const updateAsk = next => {
+    if (!askSel(next).length) {
+      toast('至少要問一件事')
       return
     }
-    if (!saveTpls(TEMPLATES.map(t => t.id).filter(x => next.includes(x)))) return
-    toast(`問事：${TEMPLATES.filter(t => next.includes(t.id)).map(t => t.name).join('＋')}`)
+    if (!saveAsk(next)) return
+    const names = TEMPLATES.filter(t => next.tpls.includes(t.id)).map(t => t.name)
+    const extra = askSel(next).length - tplsToSel(next.tpls).length
+    toast(`問事：${[...names, ...(extra ? [`加選 ${extra} 項`] : [])].join('＋')}`)
     renderBook(token, { focusAsk: true })
+  }
+  node.querySelectorAll('[data-tpl]').forEach(b => b.addEventListener('click', () => {
+    const id = b.dataset.tpl
+    const tpls = ask.tpls.includes(id) ? ask.tpls.filter(x => x !== id) : [...ask.tpls, id]
+    updateAsk({ tpls: TEMPLATES.map(t => t.id).filter(x => tpls.includes(x)), extra: ask.extra })
+  }))
+  node.querySelectorAll('[data-extra]').forEach(b => b.addEventListener('click', () => {
+    const id = b.dataset.extra
+    updateAsk({ tpls: ask.tpls, extra: ask.extra.includes(id) ? ask.extra.filter(x => x !== id) : [...ask.extra, id] })
   }))
   if (focusAsk) node.querySelector('#ask').scrollIntoView({ block: 'start' })
 

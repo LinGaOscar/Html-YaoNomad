@@ -4,9 +4,9 @@
 
 import { TRIGRAMS } from './core/hexagrams.js'
 import { ACHIEVEMENTS, currentStreak, summarize } from './core/progress.js'
-import { DEFAULT_TPLS, validTpls, tplsToSel, resolveSel } from './activities.js'
+import { ITEMS, TEMPLATES, DEFAULT_TPLS, isOldTpl, tplsToSel, askSel, resolveSel } from './activities.js'
 
-export const VERSION = 'V3.32'
+export const VERSION = 'V3.33'
 export const LINE_POS = ['初爻', '二爻', '三爻', '四爻', '五爻', '上爻']
 export const LINE_KIND = { 6: '老陰（變）', 7: '少陽', 8: '少陰', 9: '老陽（變）' }
 export const COIN_FACE = { 2: '正', 3: '背' }
@@ -18,6 +18,7 @@ const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六']
 
 const HISTORY_KEY = 'yaonomad.history'
 const TPLS_KEY = 'yaonomad.tpls'
+const EXTRA_KEY = 'yaonomad.extra'
 const BOOK_SINCE_KEY = 'yaonomad.bookSince'
 const DATA_VERSION_KEY = 'yaonomad.dataVersion'
 /** 資料版本：評分規則改版（六類＋專屬規則）時遞增，舊資料一律清除 */
@@ -174,7 +175,7 @@ export function saveHistory(list) {
 }
 
 export function addRecord(method, values, coins, question = '') {
-  const sel = tplsToSel(loadTpls())
+  const sel = askSel(loadAsk())
   const history = loadHistory()
   const record = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), time: Date.now(), method, values, coins }
   if (question.trim()) record.question = question.trim().slice(0, 40)
@@ -189,7 +190,7 @@ export function addRecord(method, values, coins, question = '') {
 export function migrateData() {
   try {
     if (Number(localStorage.getItem(DATA_VERSION_KEY)) === DATA_VERSION) return
-    for (const key of [HISTORY_KEY, TPLS_KEY, BOOK_SINCE_KEY, 'yaonomad.sel', 'yaonomad.items']) localStorage.removeItem(key)
+    for (const key of [HISTORY_KEY, TPLS_KEY, EXTRA_KEY, BOOK_SINCE_KEY, 'yaonomad.sel', 'yaonomad.items']) localStorage.removeItem(key)
     localStorage.setItem(DATA_VERSION_KEY, String(DATA_VERSION))
   } catch {}
 }
@@ -200,19 +201,39 @@ export function updateRecord(id, patch) {
 
 // ---------- 問事 ----------
 
-/** 目前的問事範圍：樣板代號（可複選），預設生活 */
-export function loadTpls() {
+const readJSON = key => {
   try {
-    const tpls = JSON.parse(localStorage.getItem(TPLS_KEY) || 'null')
-    return validTpls(tpls) ? tpls : DEFAULT_TPLS
+    return JSON.parse(localStorage.getItem(key) || 'null')
   } catch {
-    return DEFAULT_TPLS
+    return null
   }
 }
 
-export function saveTpls(tpls) {
+/**
+ * 目前的問事：{ tpls 樣板代號（生活、工作，可複選）, extra 加選的事項代號 }，預設生活。
+ * 舊版的工程師／行政／學生樣板轉成「工作」，其中工作沒有的事項改為加選
+ */
+export function loadAsk() {
+  const raw = readJSON(TPLS_KEY)
+  const rawExtra = readJSON(EXTRA_KEY)
+  const ids = Array.isArray(raw) ? raw : []
+  let extra = Array.isArray(rawExtra) ? rawExtra.filter(id => Object.hasOwn(ITEMS, id)) : []
+  let tpls = TEMPLATES.map(t => t.id).filter(id => ids.includes(id))
+  const old = ids.filter(isOldTpl)
+  if (old.length) {
+    if (!tpls.includes('work')) tpls = TEMPLATES.map(t => t.id).filter(id => id === 'work' || tpls.includes(id))
+    const base = tplsToSel(tpls)
+    extra = [...new Set([...extra, ...tplsToSel(old).filter(id => !base.includes(id))])]
+    saveAsk({ tpls, extra })
+  }
+  if (!tpls.length && !extra.length) tpls = DEFAULT_TPLS
+  return { tpls, extra }
+}
+
+export function saveAsk({ tpls, extra }) {
   try {
     localStorage.setItem(TPLS_KEY, JSON.stringify(tpls))
+    localStorage.setItem(EXTRA_KEY, JSON.stringify(extra))
     return true
   } catch {
     toast('無法保存設定（瀏覽器儲存空間不可用）')
