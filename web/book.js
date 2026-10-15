@@ -94,7 +94,7 @@ export async function renderBook(token, { focusAsk = false } = {}) {
       </section>
 
       <section class="book-sec reset-sec">
-        <div class="sec-head"><h2>輪迴</h2></div>
+        <div class="sec-head"><h2>輪迴（重來）</h2></div>
         <p class="reset-text">前塵既盡，卦簿歸空；今日之卦、往日之例，盡付東流，一切從頭。</p>
         <p class="reset-warn">然天道循環，史未嘗不相似也。重開亦然，慎之。</p>
         <div><button class="btn danger-btn" type="button" data-reset>入輪迴</button></div>
