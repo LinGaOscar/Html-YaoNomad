@@ -91,7 +91,7 @@ async function renderHome(token, { focusSeek = false } = {}) {
             <button class="btn ask-btn" type="submit">求卦</button>
           </form>
           <p class="ask-hint">問一件事：寫下心中所求再按求卦，不計入今日一卦。${daily
-            ? '<br>今天已起過卦，<a href="#/cast" class="again-link" data-cast>再起一卦</a>易經會念你。'
+            ? '<br>一日一卦，順天而行；<a href="#/cast" class="again-link" data-cast>再起一卦</a>，莫逆天意。'
             : ''}</p>
         </div>
         <nav class="actions">
@@ -238,7 +238,7 @@ async function renderCasting(token) {
     el.innerHTML = line.yin ? '<i></i><i></i>' : '<i></i>'
     el.classList.add('on')
     el.classList.toggle('changing', line.changing)
-    await sleep(520)
+    await sleep(850) // 每爻成形後多停留一下
   }
   status.textContent = '卦成'
   await sleep(450)
