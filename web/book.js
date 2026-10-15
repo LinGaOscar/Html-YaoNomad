@@ -2,9 +2,11 @@
 
 /** 我的卦簿（#/book）：統計、成就、準度、圖鑑，以及「問事」範圍設定（#/book/ask 直接捲到問事） */
 
-import { fullName } from './core/hexagrams.js'
+import { fullName, TRIGRAMS } from './core/hexagrams.js'
+import { castFromLines } from './core/casting.js'
+import { scoreCategories } from './core/scoring.js'
 import { ACHIEVEMENTS, summarize } from './core/progress.js'
-import { ITEMS, TEMPLATES } from './activities.js'
+import { ITEMS, TEMPLATES, TRAITS } from './activities.js'
 import { esc, cnNum, formatDate, isStale, mount, toast, hw, loadHexagrams, bookRecords, bookSince, resetBook, loadTpls, saveTpls } from './ui.js'
 
 /** 卦的小圖：六爻由下而上 */
@@ -14,6 +16,44 @@ export function glyphHTML(hex) {
     return `<i class="${yang ? 'yang' : 'yin'}"></i>`
   })
   return `<span class="glyph" aria-hidden="true">${bars.join('')}</span>`
+}
+
+/** 卦的六爻值（無變爻）：7 陽、8 陰 */
+const hexValues = hex => [0, 1, 2, 3, 4, 5].map(i => ((i < 3 ? hex.lower >> i : hex.upper >> (i - 3)) & 1 ? 7 : 8))
+
+/** 圖鑑小窗：卦象組成、一句話、六類傾向；遇見過才顯示白話、卦辭、象曰、職場與最近卦例 */
+function dexHTML(hexagrams, h, e) {
+  const up = TRIGRAMS[h.upper]
+  const low = TRIGRAMS[h.lower]
+  const cats = scoreCategories(castFromLines(hexagrams, '', hexValues(h))).map(c => ({ name: c.name, score: c.score }))
+  const sorted = [...cats].sort((a, b) => b.score - a.score)
+  const chip = (c, cls) => `<span class="dx-chip ${cls}">${c.name} ${c.score}</span>`
+  return `
+    <header class="dx-head">
+      <span class="dx-glyph">${glyphHTML(h)}</span>
+      <div>
+        <p class="kicker">第${cnNum(h.number)}卦${e ? ` · 遇見 ${e.count} 次` : ' · 尚未遇見'}</p>
+        <h2>${esc(fullName(h))}</h2>
+        <p class="dx-sub">${esc(up.name)}${esc(up.image)}在上 · ${esc(low.name)}${esc(low.image)}在下</p>
+      </div>
+      <button class="icon-btn dx-close" type="button" aria-label="關閉">✕</button>
+    </header>
+    <p class="dx-motto">${esc(h.motto)}</p>
+    <p class="dx-compose">外卦${esc(up.name)}為${esc(up.image)}，${TRAITS[h.upper]}；內卦${esc(low.name)}為${esc(low.image)}，${TRAITS[h.lower]}。</p>
+    <p class="dx-lean">此卦利 ${chip(sorted[0], 'good')}${chip(sorted[1], 'good')} 較弱 ${chip(sorted[5], 'bad')}</p>
+    ${e ? `
+    <dl class="dx-text">
+      <dt>白話</dt><dd>${esc(h.plain)}</dd>
+      <dt>卦辭</dt><dd class="classic">${esc(h.name)}：${esc(h.judgment)}</dd>
+      <dt>象曰</dt><dd class="classic">${esc(h.image)}</dd>
+      <dt>職場</dt><dd>${esc(h.advice)}</dd>
+    </dl>
+    <a class="dx-link" href="#/r/${esc(e.latest.id)}">看最近一次卦例（${formatDate(e.latest.time)}）→</a>`
+    : '<p class="dx-locked">起卦遇見這一卦後，解鎖白話、卦辭、象曰與職場解讀。</p>'}
+    <nav class="dx-nav">
+      <button class="text-btn" type="button" data-step="-1">‹ 上一卦</button>
+      <button class="text-btn" type="button" data-step="1">下一卦 ›</button>
+    </nav>`
 }
 
 export async function renderBook(token, { focusAsk = false } = {}) {
@@ -70,12 +110,13 @@ export async function renderBook(token, { focusAsk = false } = {}) {
         <div class="dex">${[...hexagrams].sort((a, b) => a.number - b.number).map(h => {
           const e = s.collection.get(h.number)
           return e
-            ? `<a class="dex-cell on" href="#/r/${esc(e.latest.id)}" aria-label="${esc(fullName(h))}，遇見 ${e.count} 次">
+            ? `<button type="button" class="dex-cell on" data-n="${h.number}" aria-label="${esc(fullName(h))}，遇見 ${e.count} 次">
                 ${glyphHTML(h)}<span class="dex-name">${esc(fullName(h))}</span>${e.count > 1 ? `<span class="dex-count">×${e.count}</span>` : ''}
-              </a>`
-            : `<span class="dex-cell" aria-label="第${h.number}卦，尚未遇見">${glyphHTML(h)}<span class="dex-name">第${cnNum(h.number)}卦</span></span>`
+              </button>`
+            : `<button type="button" class="dex-cell" data-n="${h.number}" aria-label="第${h.number}卦，尚未遇見">${glyphHTML(h)}<span class="dex-name">第${cnNum(h.number)}卦</span></button>`
         }).join('')}</div>
-        <p class="fine">點亮的卦可以點開最近一次的卦例。只計本卦，變卦不算。</p>
+        <p class="fine">點任一卦看解說；遇見過的卦可再看白話、卦辭與最近一次卦例。只計本卦，變卦不算。</p>
+        <dialog class="dex-dialog" aria-label="卦象解說"></dialog>
       </section>
 
       <section class="book-sec ask-sec" id="ask">
@@ -112,6 +153,26 @@ export async function renderBook(token, { focusAsk = false } = {}) {
     toast(`問事：${TEMPLATES.filter(t => next.includes(t.id)).map(t => t.name).join('＋')}`)
     renderBook(token, { focusAsk: true })
   }))
+  // 圖鑑小窗：點格子開啟，可左右翻卦；點背景、✕ 或 Esc 關閉
+  const dialog = node.querySelector('.dex-dialog')
+  const byNumber = new Map(hexagrams.map(h => [h.number, h]))
+  const show = n => {
+    dialog.dataset.n = n
+    dialog.innerHTML = hw(dexHTML(hexagrams, byNumber.get(n), s.collection.get(n)))
+    dialog.scrollTop = 0
+    if (!dialog.open) dialog.showModal()
+  }
+  node.querySelector('.dex').addEventListener('click', ev => {
+    const cell = ev.target.closest('[data-n]')
+    if (cell) show(Number(cell.dataset.n))
+  })
+  dialog.addEventListener('click', ev => {
+    if (ev.target === dialog || ev.target.closest('.dx-close')) return dialog.close()
+    const step = ev.target.closest('[data-step]')
+    if (step) show(((Number(dialog.dataset.n) - 1 + Number(step.dataset.step) + 64) % 64) + 1)
+    if (ev.target.closest('.dx-link')) dialog.close()
+  })
+
   if (focusAsk) node.querySelector('#ask').scrollIntoView({ block: 'start' })
 
   // 頁內二次確認：第一次點擊改為警語，3 秒內再點一次才清空

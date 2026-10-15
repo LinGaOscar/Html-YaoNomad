@@ -1023,6 +1023,9 @@ details.card[open] > summary { border-bottom: 1px solid var(--line-soft); }
 @media (min-width: 900px) { .dex { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
 .dex-cell {
   position: relative;
+  font: inherit;
+  background: none;
+  cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1036,6 +1039,7 @@ details.card[open] > summary { border-bottom: 1px solid var(--line-soft); }
 .dex-cell .glyph { opacity: 0.35; }
 .dex-cell.on { border-style: solid; border-color: var(--line-soft); background: var(--card); color: var(--text); box-shadow: var(--shadow); transition: transform 0.2s, border-color 0.2s; }
 .dex-cell.on .glyph { opacity: 1; }
+.dex-cell:hover { border-color: var(--gold); }
 .dex-cell.on:hover { transform: translateY(-2px); border-color: var(--gold); }
 .dex-name { font-size: 0.78rem; letter-spacing: 0.04em; line-height: 1.3; }
 .dex-count { position: absolute; top: 4px; right: 6px; font-size: 0.7rem; color: var(--gold); font-variant-numeric: tabular-nums; }
@@ -1115,3 +1119,37 @@ details.card.reading.fold[open] > summary { border-bottom: none; }
 }
 .hist-filter button[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
 .hist-none { color: var(--faint); font-size: 0.9rem; }
+
+/* 圖鑑小窗 */
+.dex-dialog {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  padding: 20px;
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  overflow-y: auto;
+}
+.dex-dialog[open] { animation: ink-in 0.35s ease both; }
+.dex-dialog::backdrop { background: rgba(20, 24, 22, 0.45); backdrop-filter: blur(2px); }
+.dx-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+.dx-head h2 { font-size: 1.4rem; letter-spacing: 0.12em; }
+.dx-glyph .glyph { transform: scale(1.4); transform-origin: left center; margin-right: 10px; }
+.dx-sub { font-size: 0.8rem; color: var(--muted); letter-spacing: 0.06em; }
+.dx-close { align-self: start; }
+.dx-motto { margin: 16px 0 8px; font-family: var(--serif); font-size: 1.15rem; letter-spacing: 0.08em; }
+.dx-compose, .dx-lean, .dx-locked { font-size: 0.88rem; color: var(--muted); line-height: 1.8; }
+.dx-lean { margin-top: 6px; }
+.dx-chip { display: inline-block; margin: 0 6px 0 2px; padding: 0 8px; border: 1px solid currentColor; border-radius: 3px; font-size: 0.78rem; }
+.dx-chip.good { color: var(--good); }
+.dx-chip.bad { color: var(--bad); }
+.dx-text { margin: 10px 0 0; padding-top: 4px; border-top: 1px solid var(--line-soft); }
+.dx-text dt { margin-top: 12px; font-size: 0.78rem; color: var(--gold); letter-spacing: 0.24em; }
+.dx-text dd { margin: 4px 0 0; line-height: 1.8; }
+.dx-text dd.classic { font-family: var(--serif); }
+.dx-locked { margin-top: 12px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 4px; }
+.dx-link { display: inline-block; margin-top: 14px; color: var(--gold); font-size: 0.9rem; }
+.dx-nav { display: flex; justify-content: space-between; margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+.dx-head .kicker { letter-spacing: 0.12em; white-space: nowrap; }
