@@ -1091,3 +1091,27 @@ details.card[open] > summary { border-bottom: 1px solid var(--line-soft); }
 .seek-score p { margin-top: 4px; line-height: 1.7; }
 .seek.good .chip { color: var(--good); border-color: currentColor; }
 .seek.bad .chip { color: var(--bad); border-color: currentColor; background: var(--bad-soft); }
+
+/* 卦象解析可收合：白話留在摘要 */
+details.card.reading.fold > summary { display: block; padding: 0; font-size: inherit; font-weight: inherit; letter-spacing: inherit; }
+details.card.reading.fold > summary::before { content: none; }
+details.card.reading.fold[open] > summary { border-bottom: none; }
+.rd-plain { margin: 12px 0 8px; line-height: 1.8; letter-spacing: 0.03em; }
+.rd-more { display: inline-block; margin-bottom: 10px; font-size: 0.8rem; color: var(--gold); letter-spacing: 0.1em; }
+.rd-more::before { content: "▸ "; display: inline-block; transition: transform 0.2s; }
+.reading.fold[open] .rd-more::before { transform: rotate(90deg); }
+
+.hist-filter { display: flex; gap: 8px; flex-wrap: wrap; }
+.hist-filter button {
+  padding: 5px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.hist-filter button[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
+.hist-none { color: var(--faint); font-size: 0.9rem; }

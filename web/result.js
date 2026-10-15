@@ -6,7 +6,7 @@ import { fullName, TRIGRAMS } from './core/hexagrams.js'
 import { AFFINITY, CATEGORIES, FORTUNE, scoreActivities } from './core/scoring.js'
 import { castKind, evaluate, todayDaily } from './core/progress.js'
 import { encodeShare, decodeShare } from './core/share.js'
-import { ITEMS, TRAITS, relation, tipFor, storyFor, stampsOf, glyphFor, sealFor, sealOf, LEGACY_SEL, resolveSel, selToCode, codeToSel } from './activities.js'
+import { ITEMS, ITEM_WORDS, CAT_WORDS, CAT_TIP, TRAITS, relation, tipFor, storyFor, stampsOf, glyphFor, sealFor, sealOf, LEGACY_SEL, resolveSel, selToCode, codeToSel } from './activities.js'
 import { startInkScene } from './inkscene.js'
 import { inkBurst } from './ink.js'
 import {
@@ -26,18 +26,22 @@ function hexHTML(lines, highlight, delay = 0) {
   }).join('')}</div>`
 }
 
+/** 卦象解析：白話一直顯示，卦辭、象曰、職場、動爻收在展開裡（寬螢幕預設展開） */
 function readingHTML(title, hex, movingLines) {
   return `
-    <article class="card reading">
-      <div class="sec-head"><h2>${title}</h2><span>第${cnNum(hex.number)}卦 · ${esc(hex.name)}</span></div>
+    <details class="card reading fold">
+      <summary>
+        <div class="sec-head"><h2>${title}</h2><span>第${cnNum(hex.number)}卦 · ${esc(hex.name)}</span></div>
+        <p class="rd-plain">${esc(hex.plain)}</p>
+        <span class="rd-more">卦辭 · 象曰 · 職場${movingLines.length ? ' · 動爻' : ''}</span>
+      </summary>
       <dl>
         <dt>卦辭</dt><dd class="classic">${esc(hex.name)}：${esc(hex.judgment)}</dd>
         <dt>象曰</dt><dd class="classic">${esc(hex.image)}</dd>
-        <dt>白話</dt><dd>${esc(hex.plain)}</dd>
         <dt>職場</dt><dd>${esc(hex.advice)}</dd>
         ${movingLines.length ? `<dt>動爻</dt><dd class="moving">${movingLines.map(t => `<p>${esc(t)}</p>`).join('')}</dd>` : ''}
       </dl>
-    </article>`
+    </details>`
 }
 
 /** 評分卡上的印章彩蛋：文字依事項而定，週五／週一只看主分類是否套用該規則 */
@@ -52,7 +56,7 @@ function stampFor(s) {
 }
 
 const shareCode = record => encodeShare({
-  values: record.values, time: record.time, streak: record.streak || 0, sel: selToCode(record.sel || LEGACY_SEL),
+  values: record.values, time: record.time, streak: record.streak || 0, sel: selToCode(record.sel || LEGACY_SEL), question: record.question,
 })
 
 const catLabel = s => (s.cats[1] !== undefined && s.cats[1] !== s.cats[0]
@@ -201,7 +205,7 @@ function copyText(ctx) {
     '',
     `今日一句：${present.motto}`,
     '',
-    ...(ctx.seek ? [`所求評分：${ctx.seek.score}（${LEVEL[ctx.seek.level]}，依${ctx.seek.basis}）${ctx.seek.tip}`, ''] : [
+    ...(ctx.seek ? [`所求評分：${ctx.seek.score} ${LEVEL[ctx.seek.level]} · 依${ctx.seek.basis}。${ctx.seek.tip}`, ''] : [
       `今日六類：${ctx.categories.map(c => `${c.name} ${c.score}`).join('、')}`,
       '',
       '諸事評分：',
@@ -244,37 +248,54 @@ function omenHTML(kind, daily) {
     </aside>`
 }
 
-const FORTUNE_TIP = {
-  good: '時機正好，放手去求。',
-  fair: '可求，但要多花心思、按部就班。',
-  bad: '時機未到，先緩一緩、多做準備。',
-}
 const levelOf = n => (n >= 70 ? 'good' : n < 40 ? 'bad' : 'fair')
 
+/** 所求中出現的最長詞；同長取先出現的 */
+function longestIn(q, words) {
+  let best = null
+  for (const w of words) {
+    const at = q.indexOf(w)
+    if (at < 0) continue
+    if (!best || w.length > best.w.length || (w.length === best.w.length && at < best.at)) best = { w, at }
+  }
+  return best
+}
+
 /**
- * 求卦的評分與墨字：所求裡提到某個事項名稱（如「開會」「考試」）就以該事項評分，否則看時運類。
- * 墨字：所求含該事項的代表字就用它，否則從所求中隨機取一字（依卦例固定），優先取有篆字的代表字；沒有漢字時用本卦卦名首字
+ * 求卦的評分與墨字：所求提到事項（名稱或同義詞，如「開會」「面試」以外的「會議」）就以該事項評分；
+ * 否則依關鍵詞歸到六類（如「面試」→溝通）；都沒有就看時運類。
+ * 墨字：所求含該事項的代表字就用它，否則從所求中隨機取一字（依所求與六爻固定，分享出去也相同），優先取有篆字的代表字；沒有漢字時用本卦卦名首字
  */
-function seekInfo(record, result, categories) {
+export function seekInfo(record, result, categories) {
   const q = record.question
-  const hit = Object.entries(ITEMS)
-    .filter(([, it]) => q.includes(it.name))
-    .sort((a, b) => b[1].name.length - a[1].name.length)[0]
+  let hit = null
+  for (const [id, it] of Object.entries(ITEMS)) {
+    const m = longestIn(q, [it.name, ...(ITEM_WORDS[id] || [])])
+    if (m && (!hit || m.w.length > hit.m.w.length || (m.w.length === hit.m.w.length && m.at < hit.m.at))) hit = { id, it, m }
+  }
   let info
   if (hit) {
-    const [id, it] = hit
+    const { id, it } = hit
     const s = scoreActivities(result, { items: [{ id, name: it.name, cats: it.cats }], categories })[0]
     info = { score: s.score, level: s.level, basis: `「${it.name}」`, tip: tipFor(s, s.level), cat: it.cats[0] }
   } else {
-    const score = categories[FORTUNE].score
-    info = { score, level: levelOf(score), basis: '時運', tip: FORTUNE_TIP[levelOf(score)], cat: FORTUNE }
+    let cat = FORTUNE
+    let word = null
+    CAT_WORDS.forEach((words, c) => {
+      const m = longestIn(q, words)
+      if (m && (!word || m.w.length > word.w.length || (m.w.length === word.w.length && m.at < word.at))) { cat = c; word = m }
+    })
+    const score = categories[cat].score
+    const level = levelOf(score)
+    info = { score, level, basis: `${CATEGORIES[cat]}類${word ? `（${word.w}）` : ''}`, tip: CAT_TIP[cat][level], cat }
   }
+  const it = hit?.it
   let h = 0
-  for (const c of record.id) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  for (const c of q + record.values.join('')) h = (h * 31 + c.codePointAt(0)) >>> 0
   const chars = [...q].filter(c => /\p{Script=Han}/u.test(c))
   const seals = chars.filter(sealOf)
   const pool = seals.length ? seals : chars
-  const own = hit && q.includes(hit[1].glyph) ? hit[1].glyph : null
+  const own = it && q.includes(it.glyph) ? it.glyph : null
   const glyph = own || (pool.length ? pool[h % pool.length] : result.present.name[0])
   return { ...info, glyph, seal: sealOf(glyph) }
 }
@@ -496,15 +517,16 @@ function renderView(ctx) {
       </div>
 
       <div class="r-actions">
-        <p class="fine hint">${own ? '每次起卦都會自動保存到歷史紀錄。' : '分享連結只帶六爻與日期，打開的人看到的是同一卦。'}</p>
+        <p class="fine hint">${own ? '每次起卦都會自動保存到歷史紀錄。' : (asking ? '分享連結帶六爻、日期與所求，打開的人看到的是同一卦。' : '分享連結只帶六爻與日期，打開的人看到的是同一卦。')}</p>
         <button class="btn primary" type="button" data-share>分享連結</button>
         <button class="btn" type="button" data-copy>複製完整卦象</button>
-        <a class="btn" href="#/cast">${own ? '再起一卦' : '我也起一卦'}</a>
+        <a class="btn" href="${asking ? '#/seek' : '#/cast'}">${own ? (asking ? '再求一卦' : '再起一卦') : (asking ? '我也求一卦' : '我也起一卦')}</a>
         <a class="push" href="#/history">查看歷史紀錄 →</a>
       </div>
       <p class="fine">卦象由本機亂數產生，僅供娛樂與自省，不構成任何決策建議。</p>
     </section>`)
 
+  if (matchMedia('(min-width: 900px)').matches) node.querySelectorAll('.reading.fold').forEach(d => { d.open = true })
   if (asking) setupSeek(node, ctx.seek)
   else setupScoreDetail(node.querySelector('.score-grid'), scores, result)
 
@@ -591,6 +613,7 @@ export async function renderShared(token, code) {
   if (isStale(token)) return
   const record = { id: 'shared', time: data.time, method: 'coin', values: data.values, coins: null, sel, items: resolveSel(sel) }
   if (data.streak > 1) record.streak = data.streak
+  if (data.question) record.question = data.question
   const ev = evaluate(hexagrams, record)
   renderView({ ...ev, record, kind: 'shared', own: false, hexagrams, daily: null, code: shareCode(record) })
 }

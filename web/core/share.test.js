@@ -35,3 +35,12 @@ test('分享碼：連續天數大於 1 才帶，且可與事項選擇並存', ()
   assert.deepStrictEqual([back.streak, back.sel], [3, 'student'])
   assert.strictEqual(decodeShare('v-777777-20261016').streak, 0)
 })
+
+test('分享碼：求卦帶所求，可與連續天數、事項選擇並存', () => {
+  const code = encodeShare({ values: [7, 7, 7, 7, 7, 7], time, streak: 3, sel: 'life', question: '明天面試順利嗎?' })
+  assert.match(code, /^v-777777-20261016-s3-q[A-Za-z0-9_.]+-life$/)
+  const back = decodeShare(code)
+  assert.deepStrictEqual([back.streak, back.question, back.sel], [3, '明天面試順利嗎?', 'life'])
+  assert.strictEqual(decodeShare('v-777777-20261016').question, '')
+  assert.strictEqual(decodeShare('v-777777-20261016-q.._'), null)
+})

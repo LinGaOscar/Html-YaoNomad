@@ -6,11 +6,11 @@ import { castHexagram } from './core/casting.js'
 import { fullName } from './core/hexagrams.js'
 import { ACHIEVEMENTS, castKind, dayKey, evaluate, summarize, todayDaily } from './core/progress.js'
 import { initInk, setInkMode, inkBurst, refreshColor } from './ink.js'
-import { renderResult, renderShared } from './result.js'
+import { renderResult, renderShared, seekInfo } from './result.js'
 import { renderBook, glyphHTML } from './book.js'
 import { TEMPLATES } from './activities.js'
 import {
-  VERSION, LINE_POS, LINE_KIND, COIN_FACE, KIND_LABEL, methodName, loadHexagrams, hw, esc, formatDay, formatTime, sleep,
+  VERSION, LINE_POS, LINE_KIND, COIN_FACE, KIND_LABEL, LEVEL, methodName, loadHexagrams, hw, esc, formatDay, formatTime, sleep,
   nextToken, isStale, mount, toast, loadHistory, saveHistory, addRecord, loadTpls, bookRecords, unlockedNow, announceUnlocks, migrateData,
 } from './ui.js'
 
@@ -19,6 +19,7 @@ const DAY = 86400000
 
 /** 首頁輸入的問題，交給起卦畫面使用 */
 let pendingQuestion = ''
+let histFilter = 'all'
 
 // ---------- 路由 ----------
 
@@ -30,6 +31,7 @@ async function route() {
     if (/^\/?v-/.test(hash)) return await renderShared(token, hash)
     if (hash === '/cast') return await renderCasting(token)
     if (hash === '/history') return await renderHistory(token)
+    if (hash === '/seek') return await renderHome(token, { focusSeek: true })
     if (hash === '/book') return await renderBook(token)
     if (hash === '/settings') return location.replace('#/book/ask') // 舊網址
     if (hash === '/book/ask') return await renderBook(token, { focusAsk: true })
@@ -56,7 +58,7 @@ function feedbackNudge(history, now) {
   return { rec, when }
 }
 
-async function renderHome(token) {
+async function renderHome(token, { focusSeek = false } = {}) {
   const history = loadHistory()
   const tpls = loadTpls()
   const now = Date.now()
@@ -89,7 +91,7 @@ async function renderHome(token) {
             <input id="question" name="q" maxlength="40" placeholder="心中所求">
             <button class="btn ask-btn" type="submit">求卦</button>
           </form>
-          <p class="ask-hint">寫下心中所求再按求卦，不計入今日一卦。${daily
+          <p class="ask-hint">問一件事：寫下心中所求再按求卦，不計入今日一卦。${daily
             ? '<br>今天已起過卦，<a href="#/cast" class="again-link" data-cast>再起一卦</a>易經會念你。'
             : ''}</p>
         </div>
@@ -105,7 +107,7 @@ async function renderHome(token) {
             <svg class="action-icon" viewBox="0 0 48 48" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="24" cy="17" r="10"/><circle cx="16.5" cy="29" r="10"/><circle cx="31.5" cy="29" r="10"/>
               <rect x="21" y="14" width="6" height="6"/></g></svg>
-            <span><span class="action-title">開始卜卦</span><span class="action-sub">起今日一卦 · 一次評分所問諸事</span></span>
+            <span><span class="action-title">今日一卦</span><span class="action-sub">看今天整體 · 一次評分所問諸事</span></span>
             <span class="action-arrow" aria-hidden="true">→</span>
           </a>`}
           <a class="action corner" href="#/history">
@@ -133,6 +135,10 @@ async function renderHome(token) {
 
   const input = node.querySelector('#question')
   // 輸入所求時是求卦，不顯示問事範圍
+  if (focusSeek) {
+    input.scrollIntoView({ block: 'center' })
+    input.focus()
+  }
   const askLine = node.querySelector('.six')
   input.addEventListener('input', () => { askLine.hidden = Boolean(input.value.trim()) })
   node.querySelector('.ask').addEventListener('submit', e => {
@@ -248,15 +254,18 @@ async function renderHistory(token) {
     const ev = evaluate(hexagrams, rec)
     if (!ev) return ''
     const { result, scores } = ev
+    const seek = rec.question ? seekInfo(rec, result, ev.categories) : null
     const moving = result.lines.filter(l => l.changing).length
     const top = [...scores].sort((a, b) => b.score - a.score).slice(0, 2)
     const rated = (rec.feedback || []).some(v => typeof v === 'boolean')
     return `
-      <a class="hist-card" href="#/r/${esc(rec.id)}" style="animation-delay:${Math.min(i, 12) * 0.04}s">
+      <a class="hist-card" data-kind="${seek ? 'seek' : 'day'}" href="#/r/${esc(rec.id)}" style="animation-delay:${Math.min(i, 12) * 0.04}s">
         <div class="hist-top"><h2>${esc(fullName(result.present))}</h2><time>${formatTime(rec.time)}</time></div>
         <p class="hist-meta">${KIND_LABEL[castKind(list, rec)]} · ${methodName(rec.method)} · ${moving ? `${moving} 爻動 · 之 ${esc(fullName(result.future))}` : '無動爻'}${rated ? ' · 已回饋' : ''}</p>
         ${rec.question ? `<p class="hist-q">所求：${esc(rec.question)}</p>` : ''}
-        ${rec.question ? '' : `<p class="hist-top3">較高評分：${top.map(s => `${esc(s.name)} ${s.score}`).join(' · ')}</p>`}
+        <p class="hist-top3">${seek
+          ? `所求評分：${seek.score} ${LEVEL[seek.level]} · 依${esc(seek.basis)}`
+          : `較高評分：${top.map(s => `${esc(s.name)} ${s.score}`).join(' · ')}`}</p>
       </a>`
   }).join('')
 
@@ -265,11 +274,29 @@ async function renderHistory(token) {
       <div class="topbar"><a href="#/">← 返回首頁</a>${list.length ? '<button class="text-btn danger" type="button" data-clear>清空紀錄</button>' : ''}</div>
       <h1>歷史紀錄</h1>
       <p class="sub">${list.length} 則卦例 · 由新至舊排列</p>
-      ${list.length
-        ? `<div class="hist-grid">${cards}</div>`
-        : '<div class="empty"><p>尚無卦例。靜心一念，起一卦吧。</p><a class="btn primary" href="#/cast">開始卜卦</a></div>'}
+      ${list.length ? `
+      <div class="hist-filter" role="group" aria-label="篩選">
+        <button type="button" data-f="all">全部</button><button type="button" data-f="day">今日一卦</button><button type="button" data-f="seek">求卦</button>
+      </div>
+      <div class="hist-grid">${cards}</div>
+      <p class="hist-none" hidden>沒有這類卦例。</p>`
+        : '<div class="empty"><p>尚無卦例。靜心一念，起一卦吧。</p><a class="btn primary" href="#/cast">今日一卦</a></div>'}
       <p class="fine">歷史紀錄保存在此瀏覽器；點擊紀錄會重開原卦例。清空後卦簿的收集與成就也會歸零。</p>
     </section>`)
+
+  // 篩選：全部／今日一卦（含再問、再三瀆）／求卦
+  const applyFilter = () => {
+    let shown = 0
+    for (const card of node.querySelectorAll('.hist-card')) {
+      card.hidden = histFilter !== 'all' && card.dataset.kind !== histFilter
+      if (!card.hidden) shown++
+    }
+    for (const b of node.querySelectorAll('[data-f]')) b.setAttribute('aria-pressed', String(b.dataset.f === histFilter))
+    const none = node.querySelector('.hist-none')
+    if (none) none.hidden = shown > 0
+  }
+  for (const b of node.querySelectorAll('[data-f]')) b.addEventListener('click', () => { histFilter = b.dataset.f; applyFilter() })
+  applyFilter()
 
   // 頁內二次確認：第一次點擊改為「確定清空？」，3 秒內再點一次才清空
   const clearBtn = node.querySelector('[data-clear]')
