@@ -307,7 +307,7 @@ function renderView(ctx) {
       <blockquote class="motto">
         <p class="kicker">今日一句</p>
         <p class="motto-text">${esc(present.motto)}</p>
-        <cite>My易經 · My I Ching</cite>
+        <cite>My易經 · Might Easying</cite>
       </blockquote>
 
       <section>
