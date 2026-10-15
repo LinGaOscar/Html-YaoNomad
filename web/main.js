@@ -7,7 +7,7 @@ import { fullName } from './core/hexagrams.js'
 import { ACHIEVEMENTS, castKind, dayKey, evaluate, summarize, todayDaily } from './core/progress.js'
 import { initInk, setInkMode, inkBurst, refreshColor } from './ink.js'
 import { renderResult, renderShared, seekInfo } from './result.js'
-import { renderBook, glyphHTML, dexSectionHTML, setupDex } from './book.js'
+import { renderBook, renderDex, glyphHTML } from './book.js'
 import {
   VERSION, LINE_POS, LINE_KIND, COIN_FACE, KIND_LABEL, LEVEL, methodName, loadHexagrams, hw, esc, formatDay, formatTime, sleep,
   nextToken, isStale, mount, toast, loadHistory, saveHistory, addRecord, bookRecords, unlockedNow, announceUnlocks, migrateData,
@@ -32,6 +32,7 @@ async function route() {
     if (hash === '/history') return await renderHistory(token)
     if (hash === '/seek') return await renderHome(token, { focusSeek: true })
     if (hash === '/book') return await renderBook(token)
+    if (hash === '/dex') return await renderDex(token)
     if (hash === '/settings') return location.replace('#/book/ask') // 舊網址
     if (hash === '/book/ask') return await renderBook(token, { focusAsk: true })
     const m = hash.match(/^\/r\/([\w-]+)(\/fb)?$/)
@@ -60,12 +61,12 @@ function feedbackNudge(history, now) {
 async function renderHome(token, { focusSeek = false } = {}) {
   const history = loadHistory()
   const now = Date.now()
-  const hexagrams = await loadHexagrams()
+  const hexagrams = history.length ? await loadHexagrams() : null
   if (isStale(token)) return
 
   const daily = todayDaily(history, now)
   const dailyEv = daily ? evaluate(hexagrams, daily) : null
-  const stats = history.length ? summarize(hexagrams, bookRecords(), now) : null
+  const stats = hexagrams ? summarize(hexagrams, bookRecords(), now) : null
   const nudge = history.length ? feedbackNudge(history, now) : null
   const nudgeEv = nudge ? evaluate(hexagrams, nudge.rec) : null
 
@@ -114,18 +115,24 @@ async function renderHome(token, { focusSeek = false } = {}) {
               <span class="action-sub">${history.length ? `已有 ${history.length} 則卦例，重讀當時的提醒` : '尚無卦例，起卦後自動保存'}</span></span>
             <span class="action-arrow" aria-hidden="true">→</span>
           </a>
+          <a class="action corner" href="#/dex">
+            <svg class="action-icon" viewBox="0 0 48 48" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="12" height="12"/><rect x="27" y="9" width="12" height="12"/><rect x="9" y="27" width="12" height="12"/><rect x="27" y="27" width="12" height="12"/></g></svg>
+            <span><span class="action-title">六十四卦圖鑑</span>
+              <span class="action-sub">${stats ? `已遇見 ${stats.collection.size}/64 卦 · 點卦看解說` : '六十四卦一覽，點卦看解說'}</span></span>
+            <span class="action-arrow" aria-hidden="true">→</span>
+          </a>
           <a class="action corner" href="#/book">
             <svg class="action-icon" viewBox="0 0 48 48" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2">
               <rect x="10" y="8" width="28" height="32" rx="2"/><path d="M16 8v32"/><circle cx="27" cy="22" r="5"/><path d="M24 26l-2 7 5-3 5 3-2-7"/></g></svg>
             <span><span class="action-title">我的卦簿</span>
               <span class="action-sub">${stats
-                ? `已收集 ${stats.collection.size}/64 卦 · 成就 ${stats.unlocked.size}/${ACHIEVEMENTS.length}`
-                : '收集六十四卦、解鎖成就、統計準度'}</span></span>
+                ? `成就 ${stats.unlocked.size}/${ACHIEVEMENTS.length} · 準度與問事`
+                : '解鎖成就、統計準度、調整問事'}</span></span>
             <span class="action-arrow" aria-hidden="true">→</span>
           </a>
         </nav>
       </div>
-      ${dexSectionHTML(hexagrams, stats || summarize(hexagrams, [], now))}
       <footer class="home-foot"><span>三錢六擲，由下成卦</span><span>本機運算 · 離線可用</span></footer>
       <div class="ver-row"><span class="ver-sign">菱菱角角</span><span class="version">${VERSION}</span></div>
     </section>`)
@@ -135,7 +142,6 @@ async function renderHome(token, { focusSeek = false } = {}) {
     input.scrollIntoView({ block: 'center' })
     input.focus()
   }
-  setupDex(node, hexagrams, stats || summarize(hexagrams, [], now))
   node.querySelector('.ask').addEventListener('submit', e => {
     e.preventDefault()
     if (!input.value.trim()) {

@@ -1,6 +1,6 @@
 'use strict'
 
-/** 我的卦簿（#/book）：統計、成就、準度，以及「問事」範圍設定（#/book/ask 直接捲到問事）；六十四卦圖鑑在首頁，由這裡匯出 */
+/** 我的卦簿（#/book）：統計、成就、準度，以及「問事」範圍設定（#/book/ask 直接捲到問事）；六十四卦圖鑑另有一頁（#/dex） */
 
 import { fullName, TRIGRAMS } from './core/hexagrams.js'
 import { castFromLines } from './core/casting.js'
@@ -56,7 +56,7 @@ function dexHTML(hexagrams, h, e) {
     </nav>`
 }
 
-/** 六十四卦圖鑑（首頁）：s 為 summarize() 的結果 */
+/** 六十四卦圖鑑區塊：s 為 summarize() 的結果 */
 export function dexSectionHTML(hexagrams, s) {
   return `
       <section class="book-sec dex-sec">
@@ -72,6 +72,20 @@ export function dexSectionHTML(hexagrams, s) {
         <p class="fine">點任一卦看解說；遇見過的卦可再看白話、卦辭與最近一次卦例。只計本卦，變卦不算。</p>
         <dialog class="dex-dialog" aria-label="卦象解說"></dialog>
       </section>`
+}
+
+/** 六十四卦圖鑑頁（#/dex） */
+export async function renderDex(token) {
+  const hexagrams = await loadHexagrams()
+  if (isStale(token)) return
+  const s = summarize(hexagrams, bookRecords())
+  const node = mount(`
+    <section class="book">
+      <div class="topbar"><a href="#/">← 返回首頁</a><a href="#/book">我的卦簿 →</a></div>
+      <h1>六十四卦圖鑑</h1>
+      ${dexSectionHTML(hexagrams, s)}
+    </section>`)
+  setupDex(node, hexagrams, s)
 }
 
 /** 圖鑑小窗：點格子開啟，可左右翻卦；點背景、✕ 或 Esc 關閉 */
