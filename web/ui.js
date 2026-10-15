@@ -4,9 +4,9 @@
 
 import { TRIGRAMS } from './core/hexagrams.js'
 import { ACHIEVEMENTS, currentStreak, summarize } from './core/progress.js'
-import { ITEMS, TEMPLATES, DEFAULT_TPLS, isOldTpl, tplsToSel, askSel, resolveSel } from './activities.js'
+import { TEMPLATES, EXTRA_IDS, DEFAULT_TPLS, isOldTpl, newTplOf, tplsToSel, askSel, resolveSel } from './activities.js'
 
-export const VERSION = 'V3.33'
+export const VERSION = 'V3.34'
 export const LINE_POS = ['初爻', '二爻', '三爻', '四爻', '五爻', '上爻']
 export const LINE_KIND = { 6: '老陰（變）', 7: '少陽', 8: '少陰', 9: '老陽（變）' }
 export const COIN_FACE = { 2: '正', 3: '背' }
@@ -211,23 +211,22 @@ const readJSON = key => {
 
 /**
  * 目前的問事：{ tpls 樣板代號（生活、工作，可複選）, extra 加選的事項代號 }，預設生活。
- * 舊版的工程師／行政／學生樣板轉成「工作」，其中工作沒有的事項改為加選
+ * 舊版樣板（舊生活／工作、工程師／行政／學生）轉成新的生活或工作，原本有、新樣板沒有的事項改為加選
  */
 export function loadAsk() {
   const raw = readJSON(TPLS_KEY)
   const rawExtra = readJSON(EXTRA_KEY)
   const ids = Array.isArray(raw) ? raw : []
-  let extra = Array.isArray(rawExtra) ? rawExtra.filter(id => Object.hasOwn(ITEMS, id)) : []
-  let tpls = TEMPLATES.map(t => t.id).filter(id => ids.includes(id))
+  let extra = Array.isArray(rawExtra) ? rawExtra.filter(id => EXTRA_IDS.includes(id)) : []
   const old = ids.filter(isOldTpl)
+  const wanted = new Set([...ids, ...old.map(newTplOf)])
+  const tpls = TEMPLATES.map(t => t.id).filter(id => wanted.has(id))
   if (old.length) {
-    if (!tpls.includes('work')) tpls = TEMPLATES.map(t => t.id).filter(id => id === 'work' || tpls.includes(id))
     const base = tplsToSel(tpls)
-    extra = [...new Set([...extra, ...tplsToSel(old).filter(id => !base.includes(id))])]
+    extra = [...new Set([...extra, ...tplsToSel(old).filter(id => !base.includes(id) && EXTRA_IDS.includes(id))])]
     saveAsk({ tpls, extra })
   }
-  if (!tpls.length && !extra.length) tpls = DEFAULT_TPLS
-  return { tpls, extra }
+  return tpls.length || extra.length ? { tpls, extra } : { tpls: DEFAULT_TPLS, extra: [] }
 }
 
 export function saveAsk({ tpls, extra }) {

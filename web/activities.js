@@ -62,25 +62,25 @@ export const ITEMS = {
     },
   },
   fish: {
-    name: '餵魚/澆花', cats: [5, 3], glyph: '魚',
-    tips: { good: '生活小事做起來特別療癒，順便放空。', fair: '記得就好，別忘了換水。', bad: '容易忘記或手滑，設個提醒吧。' },
+    name: '澆花', cats: [5, 3], glyph: '花',
+    tips: { good: '照顧花草特別療癒，順便放空。', fair: '記得就好，土乾了再澆。', bad: '容易忘記或澆太多，設個提醒吧。' },
     stories: {
-      good: '午休時小易給窗邊的盆栽澆水，魚缸裡的小金魚游過來討食。看著水面一圈圈漣漪，卡住的難題突然鬆開了。',
-      fair: '小易照例在下午三點餵魚、澆花，沒什麼特別，就是日常的小儀式。順手換個水，讓牠們也舒服一點。',
-      bad: '小易忙到忘了澆花，想起來一口氣倒了半壺水，盆栽淹水、飼料也撒了一桌。設個鬧鐘，少量多次就好。',
+      good: '午休時小易給窗邊的盆栽澆水，發現多肉冒出了新芽。看著葉子上的水珠，卡住的難題突然鬆開了。',
+      fair: '小易照例在下午三點澆花，沒什麼特別，就是日常的小儀式。順手轉個方向，讓每片葉子都曬到太陽。',
+      bad: '小易忙到忘了澆花，想起來一口氣倒了半壺水，盆栽淹水、土還濺了一桌。設個鬧鐘，少量多次就好。',
     },
   },
   memo: {
-    name: '寫公文', cats: [3, 1], glyph: '公',
-    tips: { good: '文思通順，公文一次過關。', fair: '照範本走，格式先對齊。', bad: '容易寫錯字或漏附件，送出前多看一遍。' },
+    name: '行政', cats: [3, 1], glyph: '政',
+    tips: { good: '公文、報帳、簽呈一路順，積壓的雜事今天清掉。', fair: '照流程走，格式和附件先對齊。', bad: '容易漏附件或被退件，送出前多看一遍。' },
     stories: {
-      good: '小易打開公文範本，主旨、說明、辦法一氣呵成，主管只改了一個標點就蓋章。今天寫什麼都順。',
-      fair: '小易照著去年的範本改，邊寫邊查條文，雖然慢了點，下班前也送出去了。',
-      bad: '公文送出三分鐘就被退回：附件忘了附，日期還寫成去年。小易決定明天早上精神好再重寫一次。',
+      good: '小易把積了一週的公文、報帳和簽呈排成一列，一件件送出，主管只改了一個標點就蓋章。今天跑流程特別順。',
+      fair: '小易照著去年的範本改公文，順手把發票貼好送報帳，雖然慢了點，下班前都送出去了。',
+      bad: '簽呈送出三分鐘就被退回：附件忘了附，日期還寫成去年。小易決定明天早上精神好再重跑一次。',
     },
   },
   reimburse: {
-    name: '核對報帳', cats: [1, 3], glyph: '帳',
+    hidden: true, name: '核對報帳', cats: [1, 3], glyph: '帳',
     high: '一分不差',
     tips: { good: '眼明手快，帳一對就平。', fair: '一張一張對，慢慢來比較快。', bad: '容易看錯數字，先放著，找人覆核。' },
     stories: {
@@ -99,7 +99,7 @@ export const ITEMS = {
     },
   },
   approval: {
-    name: '送簽呈', cats: [4, 0], glyph: '簽',
+    name: '送簽呈', cats: [4, 0], glyph: '簽', hidden: true,
     low: '退件', friday: '主管不在',
     tips: { good: '時機成熟，送上去很快就會批。', fair: '可以送，先把理由寫清楚。', bad: '容易被退件，能等就等主管心情好的時候。' },
     stories: {
@@ -109,7 +109,7 @@ export const ITEMS = {
     },
   },
   teatime: {
-    name: '午茶摸魚', cats: [5, 0], glyph: '茶',
+    name: '下午茶', cats: [5, 0], glyph: '茶',
     tips: { good: '下午茶時間到，喘口氣反而效率更好。', fair: '小歇一下就好，別聊太久。', bad: '今天摸魚容易被抓，休息要光明正大。' },
     stories: {
       good: '三點，同事揪團買手搖飲，小易點了半糖微冰，聊著聊著，下午卡住的流程就有了解法。',
@@ -175,12 +175,12 @@ export const ITEMS = {
     },
   },
   dinner: {
-    name: '聚餐約會', cats: [0, 5], glyph: '宴',
+    name: '聚餐', cats: [0, 5], glyph: '宴',
     tips: { good: '聊得來，適合約人、拉近關係。', fair: '照常赴約，話題輕鬆就好。', bad: '容易話不投機，敏感話題先別碰。' },
     stories: {
       good: '和老朋友約吃飯，從大學聊到現在，小易笑到肚子痛，約好下個月再聚。',
       fair: '聚餐氣氛普普，小易負責點菜和找話題，吃完各自回家，也算愉快。',
-      bad: '小易約會遲到二十分鐘，餐廳又剛好客滿，兩人在門口尷尬了很久。今天出門早一點。',
+      bad: '小易訂錯了日期，一群人到餐廳才發現沒有位子，在門口尷尬了很久。今天出門前再確認一次。',
     },
   },
   reading: {
@@ -230,16 +230,124 @@ export const ITEMS = {
       bad: '小易久久沒運動，一進健身房就挑戰重量，隔天全身痠到下不了床。今天慢慢來。',
     },
   },
+  relax: {
+    name: '沉澱放鬆', cats: [5, 2], glyph: '靜',
+    tips: { good: '心靜下來，適合冥想、泡澡、發呆，想法自己會浮上來。', fair: '留半小時給自己，什麼都不做也沒關係。', bad: '心裡容易亂，先放下手機，別在今天做重大決定。' },
+    stories: {
+      good: '小易關掉通知，泡了壺茶坐在窗邊，看雲走了一下午。傍晚翻開筆記本，困擾一週的事已經有了答案。',
+      fair: '小易做了十分鐘呼吸練習，雖然中途想到晚餐吃什麼，但起身時肩膀鬆了不少。',
+      bad: '小易想好好放空，手機卻一直跳訊息，越滑越煩。最後乾脆把手機放到另一個房間，才終於安靜下來。',
+    },
+  },
+  training: {
+    name: '培訓', cats: [1, 0], glyph: '學',
+    high: '學霸上身',
+    tips: { good: '吸收力強，適合上課、進修，學到的馬上用得上。', fair: '先抓重點，課後花十分鐘整理筆記。', bad: '容易分心或聽不進去，坐前排、多發問。' },
+    stories: {
+      good: '公司辦了一整天的培訓，小易每一頁都有共鳴，下課前還把新學的做法套進手上的專案，講師直接拿來當範例。',
+      fair: '培訓內容一半是知道的，小易把另一半的重點抄下來，回座位後試了其中一招，效果還不錯。',
+      bad: '小易坐在最後一排，講師的聲音像催眠曲，回過神時已經在發講義。下次記得坐前面、帶問題去。',
+    },
+  },
+  overtime: {
+    name: '加班', cats: [3, 4], glyph: '夜',
+    low: '爆肝',
+    tips: { good: '效率高，加一點班就能收尾，早點收工。', fair: '定好截止時間，做完就走。', bad: '越拖越累，今天先回家，明早再戰。' },
+    stories: {
+      good: '小易留下來多做一小時，沒有會議打擾，進度一口氣追上，還趕上末班公車。',
+      fair: '小易加班到八點，事情做完一半，剩下的列成清單留給明天，至少心裡踏實了。',
+      bad: '小易硬撐到十一點，錯字越打越多，隔天早上全部重改。今天能下班就準時下班。',
+    },
+  },
+  abroad: {
+    name: '外派', cats: [4, 0], glyph: '遠',
+    low: '簽證卡關', friday: '週五班機延誤',
+    tips: { good: '機會在遠方，適合談外派、出差、拓展新市場。', fair: '可以去，行前把文件與交接備齊。', bad: '容易卡在文件或行程，先別急著答應，多問清楚條件。' },
+    stories: {
+      good: '主管問小易願不願意去新據點半年，小易一口答應。落地第一週就談成兩個客戶，連當地的早餐都吃得習慣。',
+      fair: '小易確定要出差兩週，行前把交接寫成三頁文件，到了當地雖然有點時差，工作還算順利。',
+      bad: '小易興奮地準備外派，結果簽證少了一份證明，機票只好改期。今天先把文件一張張核對清楚。',
+    },
+  },
+  date: {
+    name: '約會', cats: [0, 4], glyph: '緣',
+    low: '已讀不回', high: '天作之合',
+    tips: { good: '桃花旺，適合約會、告白，真誠最加分。', fair: '照常赴約，多聽少說，氣氛自然就好。', bad: '容易誤會，訊息別回太快，見面再說。' },
+    stories: {
+      good: '小易鼓起勇氣約對方看展，兩人在同一幅畫前停了好久，散場時對方說：「下次換我約你。」',
+      fair: '約會吃了一頓普通的晚餐，話題有點斷斷續續，但分開前互相推薦了一本書，好像還有下次。',
+      bad: '小易遲到二十分鐘，餐廳又剛好客滿，兩人在門口尷尬了很久。今天出門早一點，手機也記得充電。',
+    },
+  },
+  interview: {
+    name: '面試', cats: [0, 4], glyph: '試',
+    monday: '週一面試官沒精神',
+    tips: { good: '表達清楚又有自信，適合面試、談條件。', fair: '準備三個實例，回答先講結論。', bad: '容易緊張失言，先模擬一次，早點到場。' },
+    stories: {
+      good: '面試官問到最難的專案，小易從容講了三分鐘，對方點頭連連，最後直接問什麼時候能報到。',
+      fair: '小易有一題答得不太好，但後面補了一個實例拉回來，面試官說會在一週內通知。',
+      bad: '小易走錯大樓遲到十分鐘，一緊張把專案年份講錯兩次。下次提早半小時到附近走一圈。',
+    },
+  },
+  move: {
+    name: '搬家', cats: [3, 4], glyph: '家',
+    tips: { good: '天時地利，搬家、看房、簽約都順。', fair: '可以動，先列清單、分箱貼標籤。', bad: '容易遺漏或碰壞東西，能延就延，至少別搬易碎品。' },
+    stories: {
+      good: '搬家那天晴空萬里，搬家師傅準時又細心，傍晚小易已經在新家煮了第一碗麵。',
+      fair: '箱子比想像中多，小易搬到半夜才搬完，但每箱都有貼標籤，隔天拆箱很快。',
+      bad: '電梯剛好維修，箱子又沒封好，一路掉東西到五樓。今天搬家記得多準備膠帶和人手。',
+    },
+  },
+  checkup: {
+    name: '健檢', cats: [5, 1], glyph: '醫',
+    tips: { good: '適合健檢、看醫生，把小毛病一次問清楚。', fair: '照預約去，問題先寫在手機備忘錄。', bad: '容易等很久或漏做項目，帶本書、早點出門。' },
+    stories: {
+      good: '小易一早做完健檢，各項指數都漂亮，醫生還誇他最近作息規律。回家路上買了杯豆漿獎勵自己。',
+      fair: '小易在候診區等了四十分鐘，看診只花五分鐘，好在先把問題寫下來，該問的都問到了。',
+      bad: '小易忘了要空腹，健檢只好改期。今天看醫生前先把注意事項再讀一遍。',
+    },
+  },
+  shopping: {
+    name: '網購', cats: [4, 1], glyph: '買',
+    low: '剁手', friday: '週五衝動購物',
+    tips: { good: '眼光準，適合買需要的東西，還撿得到優惠。', fair: '放購物車一天，明天還想要再買。', bad: '容易衝動或買到雷，今天只逛不買。' },
+    stories: {
+      good: '小易比了三家價格，剛好遇上限時折扣，買到想了很久的耳機，隔天就到貨。',
+      fair: '小易把東西放進購物車，隔天冷靜下來刪掉一半，剩下的都是真的用得到的。',
+      bad: '半夜被廣告打中，小易一口氣下單五件，收到後發現尺寸全錯。今天手機早點放下。',
+    },
+  },
+  gaming: {
+    name: '追劇打電動', cats: [5, 2], glyph: '戲',
+    tips: { good: '好好放鬆，追劇、打電動都特別過癮。', fair: '玩一兩集就好，記得起來走動。', bad: '容易一不小心玩到天亮，先設好結束時間。' },
+    stories: {
+      good: '小易追的劇剛好完結，一口氣看完大結局，結尾的伏筆讓他起雞皮疙瘩，心滿意足地睡了。',
+      fair: '小易打了三場排位，兩勝一敗，該睡了就關機，明天再戰。',
+      bad: '小易說只看一集，回過神天已經亮了，還得頂著黑眼圈去上班。今天記得設鬧鐘提醒自己。',
+    },
+  },
+  lottery: {
+    name: '試手氣', cats: [4, 2], glyph: '運',
+    low: '槓龜', high: '中大獎', friday: '週五手氣差',
+    tips: { good: '手氣旺，買張彩券、參加抽獎試試看。', fair: '小試身手就好，娛樂為主。', bad: '手氣低迷，今天別花錢求運。' },
+    stories: {
+      good: '小易順手買了一張刮刮樂，刮到第三格就中了五百元，請同事喝了一輪飲料。',
+      fair: '公司尾牙抽獎，小易抽到一包衛生紙，雖然不大，但大家都笑了。',
+      bad: '小易連買五張刮刮樂，張張槓龜，還被老闆說：「今天手氣不在你這邊。」',
+    },
+  },
 }
 
 /** 問事範圍（樣板）：可複選，評分的事項為所選樣板的聯集 */
 export const TEMPLATES = [
-  { id: 'life', name: '生活', sel: ['dinner', 'reading', 'finance', 'tidy', 'trip', 'workout'] },
-  { id: 'work', name: '工作', sel: ['meeting', 'report', 'present', 'schedule', 'approval', 'teatime'] },
+  { id: 'home', name: '生活', sel: ['dinner', 'reading', 'finance', 'trip', 'workout', 'relax'] },
+  { id: 'job', name: '工作', sel: ['meeting', 'memo', 'training', 'overtime', 'teatime', 'abroad'] },
 ]
 
 /** 舊版樣板：介面不再顯示，只用來解讀舊分享碼與舊設定 */
 const OLD_TEMPLATES = [
+  { id: 'life', to: 'home', sel: ['dinner', 'reading', 'finance', 'tidy', 'trip', 'workout'] },
+  { id: 'work', to: 'job', sel: ['meeting', 'report', 'present', 'schedule', 'approval', 'teatime'] },
   { id: 'eng', sel: ['meeting', 'report', 'debug', 'develop', 'deploy', 'fish'] },
   { id: 'admin', sel: ['meeting', 'memo', 'reimburse', 'schedule', 'approval', 'teatime'] },
   { id: 'student', sel: ['group', 'homework', 'exam', 'project', 'present', 'nap'] },
@@ -249,10 +357,22 @@ const TPL_MAP = new Map(ALL_TEMPLATES.map(t => [t.id, t]))
 export const isOldTpl = id => OLD_TEMPLATES.some(t => t.id === id)
 
 /** 預設問事：生活 */
-export const DEFAULT_TPLS = ['life']
+export const DEFAULT_TPLS = ['home']
 
 /** 未記錄事項的舊卦例沿用工程師（與核心的 DEFAULT_ITEMS 相同） */
-export const LEGACY_SEL = OLD_TEMPLATES[0].sel
+export const LEGACY_SEL = OLD_TEMPLATES.find(t => t.id === 'eng').sel
+
+/** 舊樣板對應的新樣板（生活、工作各自對應；工程師、行政、學生併入工作） */
+export const newTplOf = id => OLD_TEMPLATES.find(t => t.id === id)?.to || 'job'
+
+/** 加選清單（分組）：不在任何樣板裡、也沒被併掉（hidden）的事項 */
+export const EXTRA_GROUPS = [
+  { name: '職場', ids: ['report', 'present', 'schedule', 'group', 'interview'] },
+  { name: '工程', ids: ['debug', 'develop', 'deploy'] },
+  { name: '學業', ids: ['homework', 'exam', 'project'] },
+  { name: '生活', ids: ['date', 'fish', 'nap', 'tidy', 'move', 'checkup', 'shopping', 'gaming', 'lottery'] },
+]
+export const EXTRA_IDS = EXTRA_GROUPS.flatMap(g => g.ids)
 
 /** 所選樣板（含舊樣板）→ 事項代號（依樣板順序合併、去重） */
 export const tplsToSel = tpls => [...new Set(ALL_TEMPLATES.filter(t => tpls.includes(t.id)).flatMap(t => t.sel))]
@@ -260,7 +380,7 @@ export const tplsToSel = tpls => [...new Set(ALL_TEMPLATES.filter(t => tpls.incl
 /** 問事 = 所選樣板的事項，再接上加選的事項（依事項池順序） */
 export function askSel({ tpls, extra }) {
   const base = tplsToSel(tpls)
-  return [...base, ...Object.keys(ITEMS).filter(id => extra.includes(id) && !base.includes(id))]
+  return [...base, ...EXTRA_IDS.filter(id => extra.includes(id) && !base.includes(id))]
 }
 
 /** 事項選擇是否合法：不重複且存在的事項代號 */
@@ -310,6 +430,7 @@ export const glyphFor = s => ITEMS[s.id]?.glyph || s.name.slice(0, 1)
 export const SEAL_CODE = {
   會: '会', 蟲: '虫', 發: '发', 魚: '鱼', 帳: '账', 簽: '签', 習: '习',
   題: '题', 講: '讲', 讀: '读', 財: '财', 淨: '净', 遊: '游', 動: '动',
+  學: '学', 遠: '远', 緣: '缘', 試: '试', 醫: '医', 買: '买', 戲: '戏', 運: '运',
 }
 
 /** 事項代表字在篆字字型中的字碼 */
@@ -325,11 +446,17 @@ export const sealOf = ch => {
 /** 求卦用：所求含這些詞（或事項名稱）就以該事項評分 */
 export const ITEM_WORDS = {
   meeting: ['會議', '開會'], report: ['報告', '企劃書', '寫文件'], debug: ['bug', 'Bug', 'BUG', '除錯', '修錯'],
-  develop: ['開發', '寫程式', '寫code'], deploy: ['上線', '發版', '部署'], memo: ['公文'], reimburse: ['報帳', '報銷'],
+  develop: ['開發', '寫程式', '寫code'], deploy: ['上線', '發版', '部署'], memo: ['行政', '公文', '文書'], reimburse: ['報帳', '報銷'],
   schedule: ['行程', '排程'], approval: ['簽呈', '簽核'], group: ['討論'], homework: ['作業'], exam: ['考試', '測驗', '考上', '期中', '期末'],
-  project: ['專題'], present: ['上台', '簡報', '發表', '演講'], nap: ['補眠', '午睡', '睡覺'], dinner: ['聚餐', '約會', '相親'],
+  project: ['專題'], present: ['上台', '簡報', '發表', '演講'], nap: ['補眠', '午睡', '睡覺'], dinner: ['聚餐', '吃飯', '餐敘'],
   reading: ['讀書', '念書', '唸書', '看書'], finance: ['理財', '投資', '股票', '基金', '存錢'], tidy: ['整理', '打掃'],
   trip: ['出遊', '旅行', '旅遊', '出國'], workout: ['運動', '健身', '跑步', '減肥'],
+  fish: ['澆花', '盆栽', '植物', '花草'], teatime: ['下午茶', '午茶', '摸魚', '手搖'],
+  relax: ['放鬆', '沉澱', '冥想', '靜心', '發呆', '紓壓'], training: ['培訓', '訓練', '上課', '進修', '課程'],
+  overtime: ['加班', '熬夜', '趕工'], abroad: ['外派', '出差', '駐外', '海外'], date: ['約會', '告白', '表白', '相親', '曖昧'],
+  interview: ['面試', '應徵'], move: ['搬家', '租屋', '看房', '買房'], checkup: ['健檢', '看醫生', '體檢', '看病', '回診'],
+  shopping: ['購物', '網購', '買東西', '血拼'], gaming: ['追劇', '打電動', '遊戲', '電玩', '看劇'],
+  lottery: ['樂透', '彩券', '刮刮樂', '抽獎', '手氣'],
 }
 
 /** 求卦用：所求沒提到事項時，依關鍵詞歸到六類（溝通、分析、創意、例行、時運、休養） */

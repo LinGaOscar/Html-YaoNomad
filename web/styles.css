@@ -1155,7 +1155,8 @@ details.card.reading.fold[open] > summary { border-bottom: none; }
 
 /* 問事：加選事項 */
 .ask-sub { margin-top: 6px; font-size: 0.85rem; color: var(--muted); letter-spacing: 0.12em; }
-.extra-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.extra-grid { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.extra-group { width: 3em; font-size: 0.78rem; color: var(--faint); letter-spacing: 0.1em; }
 .extra {
   padding: 5px 12px;
   border: 1px dashed var(--line);

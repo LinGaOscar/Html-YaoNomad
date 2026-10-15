@@ -270,6 +270,7 @@ export function seekInfo(record, result, categories) {
   const q = record.question
   let hit = null
   for (const [id, it] of Object.entries(ITEMS)) {
+    if (it.hidden) continue
     const m = longestIn(q, [it.name, ...(ITEM_WORDS[id] || [])])
     if (m && (!hit || m.w.length > hit.m.w.length || (m.w.length === hit.m.w.length && m.at < hit.m.at))) hit = { id, it, m }
   }

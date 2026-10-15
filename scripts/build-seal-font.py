@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""產生六事動畫用的篆字子集字型 web/fonts/yao-seal.woff2。
+"""產生事項動畫用的篆字子集字型 web/fonts/yao-seal.woff2。
 
 來源字型：敬峰中山王篆 JFZSKSealScript（劉敬峰，SIL OFL 1.1）
   https://github.com/jeffi369/JFZSKSealScript （fonts/JFZSKSealScript_V3.ttf）

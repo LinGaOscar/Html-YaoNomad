@@ -6,7 +6,7 @@ import { fullName, TRIGRAMS } from './core/hexagrams.js'
 import { castFromLines } from './core/casting.js'
 import { scoreCategories } from './core/scoring.js'
 import { ACHIEVEMENTS, summarize } from './core/progress.js'
-import { ITEMS, TEMPLATES, TRAITS, tplsToSel, askSel } from './activities.js'
+import { ITEMS, TEMPLATES, EXTRA_GROUPS, TRAITS, tplsToSel, askSel } from './activities.js'
 import { soundState, setMusic, setSfx, brush } from './audio.js'
 import { esc, cnNum, formatDate, isStale, mount, toast, hw, loadHexagrams, bookRecords, bookSince, resetBook, loadAsk, saveAsk } from './ui.js'
 
@@ -123,7 +123,6 @@ export async function renderBook(token, { focusAsk = false } = {}) {
   if (isStale(token)) return
   const s = summarize(hexagrams, records)
   const ask = loadAsk()
-  const inTpl = tplsToSel(ask.tpls)
   const acc = s.accuracy
   const pct = (hit, total) => Math.round((hit / total) * 100)
 
@@ -169,7 +168,7 @@ export async function renderBook(token, { focusAsk = false } = {}) {
 
       <section class="book-sec ask-sec" id="ask">
         <div class="sec-head"><h2>問事</h2><span>共 ${askSel(ask).length} 項</span></div>
-        <p class="fine">今日一卦要評分哪些事：選生活、工作（可複選），再加選想問的事項。只影響之後的新卦例。</p>
+        <p class="fine">今日一卦要評分哪些事：選生活、工作（可複選），再加選樣板以外想問的事。只影響之後的新卦例。</p>
         <div class="tpl-grid two" role="group" aria-label="問事範圍">
           ${TEMPLATES.map(t => {
             const on = ask.tpls.includes(t.id)
@@ -181,13 +180,14 @@ export async function renderBook(token, { focusAsk = false } = {}) {
           }).join('')}
         </div>
         <p class="ask-sub">加選事項</p>
-        <div class="extra-grid" role="group" aria-label="加選事項">
-          ${Object.entries(ITEMS).map(([id, it]) => {
-            const fixed = inTpl.includes(id)
-            const on = fixed || ask.extra.includes(id)
-            return `<button class="extra${on ? ' on' : ''}" type="button" data-extra="${id}" aria-pressed="${on}"${fixed ? ' disabled title="已在所選樣板中"' : ''}>${esc(it.name)}</button>`
+        ${EXTRA_GROUPS.map(g => `
+        <div class="extra-grid" role="group" aria-label="加選事項：${g.name}">
+          <span class="extra-group">${g.name}</span>
+          ${g.ids.map(id => {
+            const on = ask.extra.includes(id)
+            return `<button class="extra${on ? ' on' : ''}" type="button" data-extra="${id}" aria-pressed="${on}">${esc(ITEMS[id].name)}</button>`
           }).join('')}
-        </div>
+        </div>`).join('')}
       </section>
 
       <section class="book-sec">
