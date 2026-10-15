@@ -3,10 +3,10 @@
 /** 結果頁：自己的卦例（#/r/<id>）與朋友分享的卦（#v-...） */
 
 import { fullName, TRIGRAMS } from './core/hexagrams.js'
-import { AFFINITY, CATEGORIES, FORTUNE } from './core/scoring.js'
+import { AFFINITY, CATEGORIES, FORTUNE, scoreActivities } from './core/scoring.js'
 import { castKind, evaluate, todayDaily } from './core/progress.js'
 import { encodeShare, decodeShare } from './core/share.js'
-import { TRAITS, relation, tipFor, storyFor, stampsOf, glyphFor, sealFor, sealOf, LEGACY_SEL, resolveSel, selToCode, codeToSel } from './activities.js'
+import { ITEMS, TRAITS, relation, tipFor, storyFor, stampsOf, glyphFor, sealFor, sealOf, LEGACY_SEL, resolveSel, selToCode, codeToSel } from './activities.js'
 import { startInkScene } from './inkscene.js'
 import { inkBurst } from './ink.js'
 import {
@@ -201,7 +201,7 @@ function copyText(ctx) {
     '',
     `今日一句：${present.motto}`,
     '',
-    ...(record.question ? [] : [
+    ...(ctx.seek ? [`所求評分：${ctx.seek.score}（${LEVEL[ctx.seek.level]}，依${ctx.seek.basis}）${ctx.seek.tip}`, ''] : [
       `今日六類：${ctx.categories.map(c => `${c.name} ${c.score}`).join('、')}`,
       '',
       '諸事評分：',
@@ -244,35 +244,70 @@ function omenHTML(kind, daily) {
     </aside>`
 }
 
-/** 求卦的墨字：從所求中隨機取一個漢字（依卦例固定），沒有漢字時用本卦卦名首字 */
-function seekGlyph(record, present) {
-  const chars = [...record.question].filter(c => /\p{Script=Han}/u.test(c))
-  if (!chars.length) return present.name[0]
+const FORTUNE_TIP = {
+  good: '時機正好，放手去求。',
+  fair: '可求，但要多花心思、按部就班。',
+  bad: '時機未到，先緩一緩、多做準備。',
+}
+const levelOf = n => (n >= 70 ? 'good' : n < 40 ? 'bad' : 'fair')
+
+/**
+ * 求卦的評分與墨字：所求裡提到某個事項名稱（如「開會」「考試」）就以該事項評分，否則看時運類。
+ * 墨字：所求含該事項的代表字就用它，否則從所求中隨機取一字（依卦例固定），優先取有篆字的代表字；沒有漢字時用本卦卦名首字
+ */
+function seekInfo(record, result, categories) {
+  const q = record.question
+  const hit = Object.entries(ITEMS)
+    .filter(([, it]) => q.includes(it.name))
+    .sort((a, b) => b[1].name.length - a[1].name.length)[0]
+  let info
+  if (hit) {
+    const [id, it] = hit
+    const s = scoreActivities(result, { items: [{ id, name: it.name, cats: it.cats }], categories })[0]
+    info = { score: s.score, level: s.level, basis: `「${it.name}」`, tip: tipFor(s, s.level), cat: it.cats[0] }
+  } else {
+    const score = categories[FORTUNE].score
+    info = { score, level: levelOf(score), basis: '時運', tip: FORTUNE_TIP[levelOf(score)], cat: FORTUNE }
+  }
   let h = 0
   for (const c of record.id) h = (h * 31 + c.charCodeAt(0)) >>> 0
-  return chars[h % chars.length]
+  const chars = [...q].filter(c => /\p{Script=Han}/u.test(c))
+  const seals = chars.filter(sealOf)
+  const pool = seals.length ? seals : chars
+  const own = hit && q.includes(hit[1].glyph) ? hit[1].glyph : null
+  const glyph = own || (pool.length ? pool[h % pool.length] : result.present.name[0])
+  return { ...info, glyph, seal: sealOf(glyph) }
 }
 
-/** 墨點依本卦最強的一類流動，聚成所求之字：有篆字的先篆後今，其餘只聚成明體 */
-function setupSeek(node, record, present, categories) {
+function seekHTML(seek) {
+  return `
+      <section class="seek ${seek.level}">
+        <div class="sec-head"><h2>所求評分</h2><span>依${esc(seek.basis)}</span></div>
+        <div class="seek-score">
+          <b>${seek.score}</b>
+          <div><span class="chip">${LEVEL[seek.level]}</span><p>${esc(seek.tip)}</p></div>
+        </div>
+        <div class="sd-scene seek-scene">
+          <canvas role="img" aria-label="墨點聚成所求中的「${esc(seek.glyph)}」字"></canvas><span class="seal-cap"></span>
+        </div>
+        <p class="seek-note">所求一字「<b>${esc(seek.glyph)}</b>」· 墨隨卦勢聚散</p>
+      </section>`
+}
+
+/** 墨點依評分所依的類別流動，聚成所求之字：有篆字的先篆後今，其餘只聚成明體 */
+function setupSeek(node, seek) {
   const box = node.querySelector('.seek-scene')
-  if (!box) return
-  const glyph = seekGlyph(record, present)
-  const top = categories.reduce((a, c, i) => (c.score > categories[a].score ? i : a), 0)
-  const score = categories[top].score
   const cap = box.querySelector('.seal-cap')
   startInkScene(box.querySelector('canvas'), {
-    glyph,
-    seal: sealOf(glyph),
-    cat: top,
-    level: score >= 70 ? 'good' : score < 40 ? 'bad' : 'fair',
+    glyph: seek.glyph,
+    seal: seek.seal,
+    cat: seek.cat,
+    level: seek.level,
     onPhase: phase => {
-      cap.textContent = hw(`${phase === 'seal' ? '中山王篆' : '明體'} · ${glyph}`)
+      cap.textContent = hw(`${phase === 'seal' ? '中山王篆' : '明體'} · ${seek.glyph}`)
       cap.classList.toggle('modern', phase === 'modern')
     },
   })
-  box.querySelector('canvas').setAttribute('aria-label', `墨點依${categories[top].name}之勢聚成所求中的「${glyph}」字`)
-  node.querySelector('.seek-note b').textContent = glyph
 }
 
 function feedbackHTML(scores, feedback, open) {
@@ -313,6 +348,7 @@ function renderView(ctx) {
   const isPastDay = new Date(record.time).toDateString() !== new Date().toDateString()
   // 有輸入所求時是「求卦」，只看卦象，不顯示問事的評分與回饋
   const asking = Boolean(record.question)
+  if (asking) ctx.seek = seekInfo(record, result, ctx.categories)
   const openFeedback = own && !asking && (ctx.focusFeedback || (isPastDay && !feedback.some(v => typeof v === 'boolean')))
 
   const good = scores.filter(s => s.level === 'good').sort((a, b) => b.score - a.score)
@@ -345,11 +381,7 @@ function renderView(ctx) {
         <cite>My易經 · Might Easying</cite>
       </blockquote>
 
-      ${asking ? `
-      <section class="seek">
-        <div class="sd-scene seek-scene"><canvas role="img"></canvas><span class="seal-cap"></span></div>
-        <p class="seek-note">所求一字「<b></b>」· 墨隨卦勢聚散</p>
-      </section>` : ''}
+      ${asking ? seekHTML(ctx.seek) : ''}
 
       ${asking ? '' : `<section>
         <div class="sec-head"><h2>諸事評分</h2><span>宜 ${good.length} · 平 ${fair} · 忌 ${bad.length}</span></div>
@@ -473,7 +505,7 @@ function renderView(ctx) {
       <p class="fine">卦象由本機亂數產生，僅供娛樂與自省，不構成任何決策建議。</p>
     </section>`)
 
-  if (asking) setupSeek(node, record, present, ctx.categories)
+  if (asking) setupSeek(node, ctx.seek)
   else setupScoreDetail(node.querySelector('.score-grid'), scores, result)
 
   node.querySelector('[data-share]').addEventListener('click', async () => {

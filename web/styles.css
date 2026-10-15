@@ -642,7 +642,7 @@ h1, h2, h3, p { margin: 0; }
 .cat-strip li.bad { border-bottom-color: var(--bad); }
 .cat-strip b { font-size: 1.05rem; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: 0; }
 .cat-strip i { position: absolute; top: 1px; right: 4px; font-style: normal; font-size: 0.7rem; line-height: 1; color: var(--gold); }
-.score .chip {
+.score .chip, .seek .chip {
   grid-area: chip;
   align-self: start;
   padding: 1px 8px;
@@ -1083,3 +1083,11 @@ details.card[open] > summary { border-bottom: 1px solid var(--line-soft); }
 .seek-note { font-size: 0.85rem; color: var(--faint); letter-spacing: 0.08em; }
 .seek-note b { color: var(--gold); font-weight: 700; }
 .again-link { color: var(--gold); }
+.seek.good { --acc: var(--good); }
+.seek.bad { --acc: var(--bad); }
+.seek .sec-head { width: 100%; }
+.seek-score { display: flex; align-items: center; gap: 16px; width: 100%; }
+.seek-score > b { font-size: 2.6rem; line-height: 1; color: var(--acc, var(--gold)); font-variant-numeric: tabular-nums; }
+.seek-score p { margin-top: 4px; line-height: 1.7; }
+.seek.good .chip { color: var(--good); border-color: currentColor; }
+.seek.bad .chip { color: var(--bad); border-color: currentColor; background: var(--bad-soft); }
