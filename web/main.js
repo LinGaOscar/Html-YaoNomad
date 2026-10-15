@@ -132,6 +132,9 @@ async function renderHome(token) {
     </section>`)
 
   const input = node.querySelector('#question')
+  // 輸入所問時是問卦，不顯示問事範圍
+  const askLine = node.querySelector('.six')
+  input.addEventListener('input', () => { askLine.hidden = Boolean(input.value.trim()) })
   node.querySelector('.ask').addEventListener('submit', e => {
     e.preventDefault()
     pendingQuestion = input.value
@@ -247,7 +250,7 @@ async function renderHistory(token) {
         <div class="hist-top"><h2>${esc(fullName(result.present))}</h2><time>${formatTime(rec.time)}</time></div>
         <p class="hist-meta">${KIND_LABEL[castKind(list, rec)]} · ${methodName(rec.method)} · ${moving ? `${moving} 爻動 · 之 ${esc(fullName(result.future))}` : '無動爻'}${rated ? ' · 已回饋' : ''}</p>
         ${rec.question ? `<p class="hist-q">所問：${esc(rec.question)}</p>` : ''}
-        <p class="hist-top3">較高評分：${top.map(s => `${esc(s.name)} ${s.score}`).join(' · ')}</p>
+        ${rec.question ? '' : `<p class="hist-top3">較高評分：${top.map(s => `${esc(s.name)} ${s.score}`).join(' · ')}</p>`}
       </a>`
   }).join('')
 

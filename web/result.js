@@ -201,11 +201,13 @@ function copyText(ctx) {
     '',
     `今日一句：${present.motto}`,
     '',
-    `今日六類：${ctx.categories.map(c => `${c.name} ${c.score}`).join('、')}`,
-    '',
-    '諸事評分：',
-    ...scores.map(s => `  ${s.name} ${s.score}（${LEVEL[s.level]}）${stampFor(s) ? `［${stampFor(s)}］` : ''}`),
-    '',
+    ...(record.question ? [] : [
+      `今日六類：${ctx.categories.map(c => `${c.name} ${c.score}`).join('、')}`,
+      '',
+      '諸事評分：',
+      ...scores.map(s => `  ${s.name} ${s.score}（${LEVEL[s.level]}）${stampFor(s) ? `［${stampFor(s)}］` : ''}`),
+      '',
+    ]),
     `本卦卦辭：${present.name}：${present.judgment}`,
     `象曰：${present.image}`,
     `白話：${present.plain}`,
@@ -278,7 +280,9 @@ function renderView(ctx) {
   const futureLines = lines.map(l => ({ yin: l.changing ? !l.yin : l.yin, changing: false }))
   const feedback = Array.isArray(record.feedback) ? record.feedback : []
   const isPastDay = new Date(record.time).toDateString() !== new Date().toDateString()
-  const openFeedback = own && (ctx.focusFeedback || (isPastDay && !feedback.some(v => typeof v === 'boolean')))
+  // 有輸入所問時是「問卦」，只看卦象，不顯示問事的評分與回饋
+  const asking = Boolean(record.question)
+  const openFeedback = own && !asking && (ctx.focusFeedback || (isPastDay && !feedback.some(v => typeof v === 'boolean')))
 
   const good = scores.filter(s => s.level === 'good').sort((a, b) => b.score - a.score)
   const bad = scores.filter(s => s.level === 'bad').sort((a, b) => a.score - b.score)
@@ -310,7 +314,7 @@ function renderView(ctx) {
         <cite>My易經 · Might Easying</cite>
       </blockquote>
 
-      <section>
+      ${asking ? '' : `<section>
         <div class="sec-head"><h2>諸事評分</h2><span>宜 ${good.length} · 平 ${fair} · 忌 ${bad.length}</span></div>
         <p class="summary">宜：${listText(good)}<br>忌：${listText(bad, 'bad')}</p>
         ${categoriesHTML(ctx.categories)}
@@ -331,7 +335,7 @@ function renderView(ctx) {
           }).join('')}
         </div>
         <p class="fine note">點任一項可展開白話說明與小故事。每件事由主分類（七成）與副分類（三成）組成；六類各有專屬規則，有規則加減的類別標上圓點。僅供參考，請依實際情況判斷。</p>
-      </section>
+      </section>`}
 
       <div class="r-grid">
         <div class="r-main">
@@ -365,7 +369,7 @@ function renderView(ctx) {
         </div>
 
         <aside class="r-side">
-          ${own ? feedbackHTML(scores, feedback, openFeedback) : ''}
+          ${own && !asking ? feedbackHTML(scores, feedback, openFeedback) : ''}
 
           <details class="card"${openFeedback ? '' : ' open'}>
             <summary>六爻擲錢紀錄</summary>
@@ -432,7 +436,7 @@ function renderView(ctx) {
       <p class="fine">卦象由本機亂數產生，僅供娛樂與自省，不構成任何決策建議。</p>
     </section>`)
 
-  setupScoreDetail(node.querySelector('.score-grid'), scores, result)
+  if (!asking) setupScoreDetail(node.querySelector('.score-grid'), scores, result)
 
   node.querySelector('[data-share]').addEventListener('click', async () => {
     await copyToClipboard(shareURL(ctx.code))
@@ -458,6 +462,7 @@ function renderView(ctx) {
 
   const fb = [...feedback]
   const fbBox = node.querySelector('#feedback')
+  if (!fbBox) return
   fbBox.addEventListener('click', e => {
     const btn = e.target.closest('.fb-btn')
     if (!btn) return
