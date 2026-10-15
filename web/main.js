@@ -7,11 +7,10 @@ import { fullName } from './core/hexagrams.js'
 import { ACHIEVEMENTS, castKind, dayKey, evaluate, summarize, todayDaily } from './core/progress.js'
 import { initInk, setInkMode, inkBurst, refreshColor } from './ink.js'
 import { renderResult, renderShared, seekInfo } from './result.js'
-import { renderBook, glyphHTML } from './book.js'
-import { TEMPLATES } from './activities.js'
+import { renderBook, glyphHTML, dexSectionHTML, setupDex } from './book.js'
 import {
   VERSION, LINE_POS, LINE_KIND, COIN_FACE, KIND_LABEL, LEVEL, methodName, loadHexagrams, hw, esc, formatDay, formatTime, sleep,
-  nextToken, isStale, mount, toast, loadHistory, saveHistory, addRecord, loadTpls, bookRecords, unlockedNow, announceUnlocks, migrateData,
+  nextToken, isStale, mount, toast, loadHistory, saveHistory, addRecord, bookRecords, unlockedNow, announceUnlocks, migrateData,
 } from './ui.js'
 
 const THEME_KEY = 'yaonomad.theme'
@@ -60,17 +59,15 @@ function feedbackNudge(history, now) {
 
 async function renderHome(token, { focusSeek = false } = {}) {
   const history = loadHistory()
-  const tpls = loadTpls()
   const now = Date.now()
-  const hexagrams = history.length ? await loadHexagrams() : null
+  const hexagrams = await loadHexagrams()
   if (isStale(token)) return
 
   const daily = todayDaily(history, now)
   const dailyEv = daily ? evaluate(hexagrams, daily) : null
-  const stats = hexagrams ? summarize(hexagrams, bookRecords(), now) : null
-  const nudge = hexagrams ? feedbackNudge(history, now) : null
+  const stats = history.length ? summarize(hexagrams, bookRecords(), now) : null
+  const nudge = history.length ? feedbackNudge(history, now) : null
   const nudgeEv = nudge ? evaluate(hexagrams, nudge.rec) : null
-  const askNames = TEMPLATES.filter(t => tpls.includes(t.id)).map(t => t.name).join('＋')
 
   const node = mount(`
     <section class="home">
@@ -128,19 +125,17 @@ async function renderHome(token, { focusSeek = false } = {}) {
           </a>
         </nav>
       </div>
-      <p class="six">問事：${askNames}<a class="six-edit" href="#/book/ask">調整</a></p>
+      ${dexSectionHTML(hexagrams, stats || summarize(hexagrams, [], now))}
       <footer class="home-foot"><span>三錢六擲，由下成卦</span><span>本機運算 · 離線可用</span></footer>
       <div class="ver-row"><span class="ver-sign">菱菱角角</span><span class="version">${VERSION}</span></div>
     </section>`)
 
   const input = node.querySelector('#question')
-  // 輸入所求時是求卦，不顯示問事範圍
   if (focusSeek) {
     input.scrollIntoView({ block: 'center' })
     input.focus()
   }
-  const askLine = node.querySelector('.six')
-  input.addEventListener('input', () => { askLine.hidden = Boolean(input.value.trim()) })
+  setupDex(node, hexagrams, stats || summarize(hexagrams, [], now))
   node.querySelector('.ask').addEventListener('submit', e => {
     e.preventDefault()
     if (!input.value.trim()) {

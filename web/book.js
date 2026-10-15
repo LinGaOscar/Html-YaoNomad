@@ -1,6 +1,6 @@
 'use strict'
 
-/** 我的卦簿（#/book）：統計、成就、準度、圖鑑，以及「問事」範圍設定（#/book/ask 直接捲到問事） */
+/** 我的卦簿（#/book）：統計、成就、準度，以及「問事」範圍設定（#/book/ask 直接捲到問事）；六十四卦圖鑑在首頁，由這裡匯出 */
 
 import { fullName, TRIGRAMS } from './core/hexagrams.js'
 import { castFromLines } from './core/casting.js'
@@ -56,6 +56,46 @@ function dexHTML(hexagrams, h, e) {
     </nav>`
 }
 
+/** 六十四卦圖鑑（首頁）：s 為 summarize() 的結果 */
+export function dexSectionHTML(hexagrams, s) {
+  return `
+      <section class="book-sec dex-sec">
+        <div class="sec-head"><h2>六十四卦圖鑑</h2><span>${s.collection.size} / 64</span></div>
+        <div class="dex">${[...hexagrams].sort((a, b) => a.number - b.number).map(h => {
+          const e = s.collection.get(h.number)
+          return e
+            ? `<button type="button" class="dex-cell on" data-n="${h.number}" aria-label="${esc(fullName(h))}，遇見 ${e.count} 次">
+                ${glyphHTML(h)}<span class="dex-name">${esc(fullName(h))}</span>${e.count > 1 ? `<span class="dex-count">×${e.count}</span>` : ''}
+              </button>`
+            : `<button type="button" class="dex-cell" data-n="${h.number}" aria-label="第${h.number}卦，尚未遇見">${glyphHTML(h)}<span class="dex-name">第${cnNum(h.number)}卦</span></button>`
+        }).join('')}</div>
+        <p class="fine">點任一卦看解說；遇見過的卦可再看白話、卦辭與最近一次卦例。只計本卦，變卦不算。</p>
+        <dialog class="dex-dialog" aria-label="卦象解說"></dialog>
+      </section>`
+}
+
+/** 圖鑑小窗：點格子開啟，可左右翻卦；點背景、✕ 或 Esc 關閉 */
+export function setupDex(node, hexagrams, s) {
+  const dialog = node.querySelector('.dex-dialog')
+  const byNumber = new Map(hexagrams.map(h => [h.number, h]))
+  const show = n => {
+    dialog.dataset.n = n
+    dialog.innerHTML = hw(dexHTML(hexagrams, byNumber.get(n), s.collection.get(n)))
+    dialog.scrollTop = 0
+    if (!dialog.open) dialog.showModal()
+  }
+  node.querySelector('.dex').addEventListener('click', ev => {
+    const cell = ev.target.closest('[data-n]')
+    if (cell) show(Number(cell.dataset.n))
+  })
+  dialog.addEventListener('click', ev => {
+    if (ev.target === dialog || ev.target.closest('.dx-close')) return dialog.close()
+    const step = ev.target.closest('[data-step]')
+    if (step) show(((Number(dialog.dataset.n) - 1 + Number(step.dataset.step) + 64) % 64) + 1)
+    if (ev.target.closest('.dx-link')) dialog.close()
+  })
+}
+
 export async function renderBook(token, { focusAsk = false } = {}) {
   const records = bookRecords()
   const since = bookSince()
@@ -105,20 +145,6 @@ export async function renderBook(token, { focusAsk = false } = {}) {
           : '<p class="empty-line">在結果頁的「應驗回饋」勾選準或不準，這裡會依六類統計準度：看看你是分析準，還是時運準。</p>'}
       </section>
 
-      <section class="book-sec">
-        <div class="sec-head"><h2>六十四卦圖鑑</h2><span>${s.collection.size} / 64</span></div>
-        <div class="dex">${[...hexagrams].sort((a, b) => a.number - b.number).map(h => {
-          const e = s.collection.get(h.number)
-          return e
-            ? `<button type="button" class="dex-cell on" data-n="${h.number}" aria-label="${esc(fullName(h))}，遇見 ${e.count} 次">
-                ${glyphHTML(h)}<span class="dex-name">${esc(fullName(h))}</span>${e.count > 1 ? `<span class="dex-count">×${e.count}</span>` : ''}
-              </button>`
-            : `<button type="button" class="dex-cell" data-n="${h.number}" aria-label="第${h.number}卦，尚未遇見">${glyphHTML(h)}<span class="dex-name">第${cnNum(h.number)}卦</span></button>`
-        }).join('')}</div>
-        <p class="fine">點任一卦看解說；遇見過的卦可再看白話、卦辭與最近一次卦例。只計本卦，變卦不算。</p>
-        <dialog class="dex-dialog" aria-label="卦象解說"></dialog>
-      </section>
-
       <section class="book-sec ask-sec" id="ask">
         <div class="sec-head"><h2>問事</h2><span>可複選</span></div>
         <p class="fine">選擇起卦時要占問的範圍，所選範圍的事項都會評分。只影響之後的新卦例。</p>
@@ -153,26 +179,6 @@ export async function renderBook(token, { focusAsk = false } = {}) {
     toast(`問事：${TEMPLATES.filter(t => next.includes(t.id)).map(t => t.name).join('＋')}`)
     renderBook(token, { focusAsk: true })
   }))
-  // 圖鑑小窗：點格子開啟，可左右翻卦；點背景、✕ 或 Esc 關閉
-  const dialog = node.querySelector('.dex-dialog')
-  const byNumber = new Map(hexagrams.map(h => [h.number, h]))
-  const show = n => {
-    dialog.dataset.n = n
-    dialog.innerHTML = hw(dexHTML(hexagrams, byNumber.get(n), s.collection.get(n)))
-    dialog.scrollTop = 0
-    if (!dialog.open) dialog.showModal()
-  }
-  node.querySelector('.dex').addEventListener('click', ev => {
-    const cell = ev.target.closest('[data-n]')
-    if (cell) show(Number(cell.dataset.n))
-  })
-  dialog.addEventListener('click', ev => {
-    if (ev.target === dialog || ev.target.closest('.dx-close')) return dialog.close()
-    const step = ev.target.closest('[data-step]')
-    if (step) show(((Number(dialog.dataset.n) - 1 + Number(step.dataset.step) + 64) % 64) + 1)
-    if (ev.target.closest('.dx-link')) dialog.close()
-  })
-
   if (focusAsk) node.querySelector('#ask').scrollIntoView({ block: 'start' })
 
   // 頁內二次確認：第一次點擊改為警語，3 秒內再點一次才清空

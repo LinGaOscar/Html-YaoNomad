@@ -425,8 +425,6 @@ h1, h2, h3, p { margin: 0; }
 }
 @keyframes ripple { to { transform: translate(-50%, -50%) scale(1); opacity: 0; } }
 
-.six { text-align: center; color: var(--muted); letter-spacing: 0.08em; line-height: 2; }
-.six .sep { color: var(--faint); }
 .home-foot {
   margin-top: auto;
   padding-top: 16px;
@@ -445,10 +443,6 @@ h1, h2, h3, p { margin: 0; }
   .actions .action.primary { grid-column: 1 / -1; }
   .action { grid-template-columns: auto 1fr; }
   .action-arrow { display: none; }
-}
-@media (max-width: 899px) {
-  .six .br { display: block; height: 0; }
-  .six .br + .sep { display: none; }
 }
 @media (min-width: 900px) {
   .home { gap: 32px; }
@@ -933,7 +927,6 @@ details.card[open] > summary { border-bottom: 1px solid var(--line-soft); }
   transform: rotate(-6deg);
 }
 .nudge-seal { width: 30px; height: 30px; }
-.six-edit { display: inline-block; margin-left: 10px; font-size: 0.8rem; color: var(--gold); border-bottom: 1px dotted currentColor; letter-spacing: 0.1em; line-height: 1.4; }
 
 /* ===== 結果：所問、再問提醒、印章、應驗回饋 ===== */
 .ask-line { margin-top: 6px; font-family: var(--serif); letter-spacing: 0.06em; }
