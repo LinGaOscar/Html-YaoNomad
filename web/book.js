@@ -21,7 +21,10 @@ export function glyphHTML(hex) {
 /** 卦的六爻值（無變爻）：7 陽、8 陰 */
 const hexValues = hex => [0, 1, 2, 3, 4, 5].map(i => ((i < 3 ? hex.lower >> i : hex.upper >> (i - 3)) & 1 ? 7 : 8))
 
-/** 圖鑑小窗：卦象組成、一句話、六類傾向；遇見過才顯示白話、卦辭、象曰、職場與最近卦例 */
+/** 未遇見的卦：六類傾向以假字模糊顯示，不放真實分數 */
+const VEIL = { name: '某某', score: '00' }
+
+/** 圖鑑小窗：卦象組成、一句話；遇見過才顯示六類傾向（未遇見模糊）、白話、卦辭、象曰、職場與最近卦例 */
 function dexHTML(hexagrams, h, e) {
   const up = TRIGRAMS[h.upper]
   const low = TRIGRAMS[h.lower]
@@ -40,7 +43,9 @@ function dexHTML(hexagrams, h, e) {
     </header>
     <p class="dx-motto">${esc(h.motto)}</p>
     <p class="dx-compose">外卦${esc(up.name)}為${esc(up.image)}，${TRAITS[h.upper]}；內卦${esc(low.name)}為${esc(low.image)}，${TRAITS[h.lower]}。</p>
-    <p class="dx-lean">此卦利 ${chip(sorted[0], 'good')}${chip(sorted[1], 'good')} 較弱 ${chip(sorted[5], 'bad')}</p>
+    ${e
+      ? `<p class="dx-lean">此卦利 ${chip(sorted[0], 'good')}${chip(sorted[1], 'good')} 較弱 ${chip(sorted[5], 'bad')}</p>`
+      : `<p class="dx-lean veiled" aria-label="遇見此卦後顯示">此卦利 ${chip(VEIL, 'good')}${chip(VEIL, 'good')} 較弱 ${chip(VEIL, 'bad')}</p>`}
     ${e ? `
     <dl class="dx-text">
       <dt>白話</dt><dd>${esc(h.plain)}</dd>
@@ -49,7 +54,7 @@ function dexHTML(hexagrams, h, e) {
       <dt>職場</dt><dd>${esc(h.advice)}</dd>
     </dl>
     <a class="dx-link" href="#/r/${esc(e.latest.id)}">看最近一次卦例（${formatDate(e.latest.time)}）→</a>`
-    : '<p class="dx-locked">起卦遇見這一卦後，解鎖白話、卦辭、象曰與職場解讀。</p>'}
+    : '<p class="dx-locked">起卦遇見這一卦後，解鎖六類傾向、白話、卦辭、象曰與職場解讀。</p>'}
     <nav class="dx-nav">
       <button class="text-btn" type="button" data-step="-1">‹ 上一卦</button>
       <button class="text-btn" type="button" data-step="1">下一卦 ›</button>
