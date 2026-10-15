@@ -94,9 +94,10 @@ export async function renderBook(token, { focusAsk = false } = {}) {
       </section>
 
       <section class="book-sec reset-sec">
-        <div class="sec-head"><h2>重新開始</h2></div>
-        <p class="fine">重置後，收集、成就、連續天數與準度都從零開始；歷史紀錄會保留。</p>
-        <div><button class="btn danger-btn" type="button" data-reset>重置卦簿</button></div>
+        <div class="sec-head"><h2>輪迴</h2></div>
+        <p class="reset-text">前塵既盡，卦簿歸空；今日之卦、往日之例，盡付東流，一切從頭。</p>
+        <p class="reset-warn">然天道循環，史未嘗不相似也。重開亦然，慎之。</p>
+        <div><button class="btn danger-btn" type="button" data-reset>入輪迴</button></div>
       </section>
     </section>`)
 
@@ -113,21 +114,21 @@ export async function renderBook(token, { focusAsk = false } = {}) {
   }))
   if (focusAsk) node.querySelector('#ask').scrollIntoView({ block: 'start' })
 
-  // 頁內二次確認：第一次點擊改為「確定重置？」，3 秒內再點一次才重置
+  // 頁內二次確認：第一次點擊改為警語，3 秒內再點一次才清空
   const btn = node.querySelector('[data-reset]')
   btn.addEventListener('click', () => {
     if (!btn.classList.contains('armed')) {
       btn.classList.add('armed')
-      btn.textContent = hw('確定重置？再點一次')
+      btn.textContent = hw('史必相似，重開亦然。再點一次')
       setTimeout(() => {
         btn.classList.remove('armed')
-        btn.textContent = '重置卦簿'
+        btn.textContent = '入輪迴'
       }, 3000)
       return
     }
     if (resetBook()) {
-      toast('卦簿已重置，從今天重新開始')
-      renderBook(token)
+      toast('已入輪迴，萬象歸零')
+      location.hash = '#/'
     }
   })
 }

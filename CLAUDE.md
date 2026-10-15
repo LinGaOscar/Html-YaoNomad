@@ -20,7 +20,7 @@ YaoNomad 是以《易經》三枚硬幣卜卦法為核心的多平台系統，�
 - `web/core/progress.js`：今日一卦判定（`castKind`：當天第一卦 daily、換問題 new、同問題第二次 again、第三次起 profane）、連續天數、成就、準度；`web/core/share.js`：分享碼編解碼
 - 歷史紀錄只存爻值、硬幣、`question`、`sel`（起卦當時評分的事項代號）、`streak`（起卦當下的連續天數，例行類加分用）、`feedback`（應驗回饋）；載入時由 `sel` 解出 `items` 供 `evaluate()` 重算，存檔時會去掉 `items`
 - 評分規則改版時遞增 `ui.js` 的 `DATA_VERSION`，啟動時 `migrateData()` 會清除舊資料（目前為 2：六類評分）
-- 成就與圖鑑都由歷史即時推導，不另外儲存；「重置卦簿」只記下起算時間（`yaonomad.bookSince`），之後的卦例才計入卦簿，歷史紀錄保留
+- 成就與圖鑑都由歷史即時推導，不另外儲存；「入輪迴」（卦簿最下方）清空所有卦例與卦簿起算點，問事範圍與深淺色保留
 - 畫面文字一律半形：`ui.js` 的 `hw()` 在顯示時把全形標點轉半形（`mount`、toast、複製文字都經過它），資料檔維持全形原文；`esc()` 會先轉換「」，避免轉出的引號破壞屬性
 
 線上部署（GitHub Pages）：https://lingaoscar.github.io/Html-YaoNomad/。本機開發環境設定見 `dev.md`。

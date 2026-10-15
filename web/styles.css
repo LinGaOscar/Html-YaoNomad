@@ -1052,6 +1052,8 @@ details.card[open] > summary { border-bottom: 1px solid var(--line-soft); }
 .tpl small { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
 .tpl.on { border-color: var(--gold); background: var(--gold-soft); box-shadow: 0 0 0 1px var(--gold); }
 .tpl.on b::after { content: " ✓"; color: var(--gold); }
+.reset-text { font-family: var(--serif); line-height: 1.9; letter-spacing: 0.06em; }
+.reset-warn { font-family: var(--serif); color: var(--bad); letter-spacing: 0.06em; }
 .danger-btn { color: var(--bad); }
 .danger-btn:hover, .danger-btn.armed { border-color: var(--bad); }
 .danger-btn.armed { background: var(--bad-soft); }
