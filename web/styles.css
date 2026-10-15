@@ -233,7 +233,8 @@ h1, h2, h3, p { margin: 0; }
 
 .ver-row {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
+  gap: 10px;
   align-items: center;
   margin-top: -8px;
 }
@@ -1075,3 +1076,10 @@ details.card[open] > summary { border-bottom: 1px solid var(--line-soft); }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* 求卦：所求之字的墨字動畫 */
+.seek { display: grid; justify-items: center; gap: 8px; }
+.seek-scene { width: min(100%, 480px); }
+.seek-note { font-size: 0.85rem; color: var(--faint); letter-spacing: 0.08em; }
+.seek-note b { color: var(--gold); font-weight: 700; }
+.again-link { color: var(--gold); }

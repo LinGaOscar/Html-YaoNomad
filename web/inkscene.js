@@ -238,7 +238,7 @@ function delayFor(cat, p, W, H) {
  * 在 canvas 上播放循環動畫
  * @param {HTMLCanvasElement} canvas - 尺寸由 CSS 決定
  * @param {{ glyph: string, seal?: string, cat: number, level: 'good'|'fair'|'bad', onPhase?: (phase: 'seal'|'modern') => void }} opts
- *   glyph：代表字（繁體，今字用）；seal：篆字字型中的字碼；onPhase：畫面在篆字／今字之間切換時呼叫
+ *   glyph：代表字（繁體，今字用）；seal：篆字字型中的字碼，null 表示沒有篆字、只聚成今字；onPhase：畫面在篆字／今字之間切換時呼叫
  * @returns {() => void} 停止函式；canvas 離開文件時也會自動停止
  */
 export function startInkScene(canvas, { glyph, seal = glyph, cat, level, onPhase = () => {} }) {
@@ -248,7 +248,7 @@ export function startInkScene(canvas, { glyph, seal = glyph, cat, level, onPhase
   let H = 0
   let dpr = 1
   let particles = []
-  let shapes = null // { seal, modern }：各自的 { lay, ch }；篆字字型無法使用時 seal 為 null
+  let shapes = null // { seal, modern }：各自的 { lay, ch }；篆字字型無法使用或 seal 為 null 時 seal 為 null
   let halos = null
   let phase = null
   let sprites = null
@@ -286,13 +286,13 @@ export function startInkScene(canvas, { glyph, seal = glyph, cat, level, onPhase
     const timeout = new Promise(r => setTimeout(r, 1500))
     try {
       await Promise.race([
-        Promise.all([document.fonts.load(`40px ${SEAL_FONT}`, seal), document.fonts.load(`700 40px "Noto Serif TC"`, glyph)]),
+        Promise.all([seal && document.fonts.load(`40px ${SEAL_FONT}`, seal), document.fonts.load(`700 40px "Noto Serif TC"`, glyph)]),
         timeout,
       ])
     } catch {}
     if (stopped) return
     const modern = sampleGlyph(glyph, W, H, MODERN_FONT, 700)
-    const sealShape = sealReady() ? sampleGlyph(seal, W, H, SEAL_FONT, 400) : null
+    const sealShape = seal && sealReady() ? sampleGlyph(seal, W, H, SEAL_FONT, 400) : null
     shapes = { seal: sealShape, modern }
     const rand = rng(glyph.codePointAt(0) * 7 + cat)
     const glyphCount = Math.max(180, Math.min(600, Math.max(modern.pts.length, sealShape?.pts.length || 0)))

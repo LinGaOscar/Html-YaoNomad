@@ -300,6 +300,13 @@ export const SEAL_CODE = {
 /** 事項代表字在篆字字型中的字碼 */
 export const sealFor = s => SEAL_CODE[glyphFor(s)] || glyphFor(s)
 
+const SEAL_SET = new Set(Object.values(ITEMS).map(it => SEAL_CODE[it.glyph] || it.glyph))
+/** 任一字在篆字字型中的字碼；字型只收代表字，沒收的字為 null（只用明體） */
+export const sealOf = ch => {
+  const code = SEAL_CODE[ch] || ch
+  return SEAL_SET.has(code) ? code : null
+}
+
 /** 八卦性質，以三位碼為索引 */
 export const TRAITS = ['柔順承載', '發動開創', '險陷深入', '喜悅言說', '止靜', '光明清晰', '滲透溝通', '剛健主導']
 

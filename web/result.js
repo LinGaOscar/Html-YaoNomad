@@ -6,7 +6,7 @@ import { fullName, TRIGRAMS } from './core/hexagrams.js'
 import { AFFINITY, CATEGORIES, FORTUNE } from './core/scoring.js'
 import { castKind, evaluate, todayDaily } from './core/progress.js'
 import { encodeShare, decodeShare } from './core/share.js'
-import { TRAITS, relation, tipFor, storyFor, stampsOf, glyphFor, sealFor, LEGACY_SEL, resolveSel, selToCode, codeToSel } from './activities.js'
+import { TRAITS, relation, tipFor, storyFor, stampsOf, glyphFor, sealFor, sealOf, LEGACY_SEL, resolveSel, selToCode, codeToSel } from './activities.js'
 import { startInkScene } from './inkscene.js'
 import { inkBurst } from './ink.js'
 import {
@@ -193,7 +193,7 @@ function copyText(ctx) {
     `My易經 · ${KIND_LABEL[kind]}`,
     kind === 'shared' ? `起卦日期：${formatDate(record.time)}` : `起卦時間：${formatTime(record.time)}（${methodName(record.method)}）`,
   ]
-  if (record.question) out.push(`所問：${record.question}`)
+  if (record.question) out.push(`所求：${record.question}`)
   out.push(
     `本卦：第${present.number}卦 ${fullName(present)}（${trigramPair(present)}）`,
     future ? `變卦：第${future.number}卦 ${fullName(future)}（變爻：${changing.join('、')}）` : '變卦：無（六爻皆靜）',
@@ -238,10 +238,41 @@ function omenHTML(kind, daily) {
       <div>
         <p class="omen-quote">初筮告，再三瀆，瀆則不告。<cite>《蒙》卦辭</cite></p>
         <p>${kind === 'again'
-          ? '同一件事今天已經問過了。第一次的答案最誠懇，以今日一卦為準。'
-          : '同一件事問到第三次，易經說問太多就不告訴你了，這卦當作娛樂就好。'}${link}</p>
+          ? '今天已經起過卦了。第一次的答案最誠懇，以今日一卦為準。'
+          : '今天問到第三次，易經說問太多就不告訴你了，這卦當作娛樂就好。'}${link}</p>
       </div>
     </aside>`
+}
+
+/** 求卦的墨字：從所求中隨機取一個漢字（依卦例固定），沒有漢字時用本卦卦名首字 */
+function seekGlyph(record, present) {
+  const chars = [...record.question].filter(c => /\p{Script=Han}/u.test(c))
+  if (!chars.length) return present.name[0]
+  let h = 0
+  for (const c of record.id) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  return chars[h % chars.length]
+}
+
+/** 墨點依本卦最強的一類流動，聚成所求之字：有篆字的先篆後今，其餘只聚成明體 */
+function setupSeek(node, record, present, categories) {
+  const box = node.querySelector('.seek-scene')
+  if (!box) return
+  const glyph = seekGlyph(record, present)
+  const top = categories.reduce((a, c, i) => (c.score > categories[a].score ? i : a), 0)
+  const score = categories[top].score
+  const cap = box.querySelector('.seal-cap')
+  startInkScene(box.querySelector('canvas'), {
+    glyph,
+    seal: sealOf(glyph),
+    cat: top,
+    level: score >= 70 ? 'good' : score < 40 ? 'bad' : 'fair',
+    onPhase: phase => {
+      cap.textContent = hw(`${phase === 'seal' ? '中山王篆' : '明體'} · ${glyph}`)
+      cap.classList.toggle('modern', phase === 'modern')
+    },
+  })
+  box.querySelector('canvas').setAttribute('aria-label', `墨點依${categories[top].name}之勢聚成所求中的「${glyph}」字`)
+  node.querySelector('.seek-note b').textContent = glyph
 }
 
 function feedbackHTML(scores, feedback, open) {
@@ -269,7 +300,7 @@ function feedbackHTML(scores, feedback, open) {
 
 /**
  * @param {object} ctx
- * @param {'daily'|'new'|'again'|'profane'|'shared'} ctx.kind
+ * @param {'daily'|'seek'|'again'|'profane'|'shared'} ctx.kind
  * @param {import('./ui.js').CastRecord} ctx.record
  * @param {boolean} ctx.own - 自己的紀錄（可回饋、可手動成卦）
  */
@@ -280,7 +311,7 @@ function renderView(ctx) {
   const futureLines = lines.map(l => ({ yin: l.changing ? !l.yin : l.yin, changing: false }))
   const feedback = Array.isArray(record.feedback) ? record.feedback : []
   const isPastDay = new Date(record.time).toDateString() !== new Date().toDateString()
-  // 有輸入所問時是「問卦」，只看卦象，不顯示問事的評分與回饋
+  // 有輸入所求時是「求卦」，只看卦象，不顯示問事的評分與回饋
   const asking = Boolean(record.question)
   const openFeedback = own && !asking && (ctx.focusFeedback || (isPastDay && !feedback.some(v => typeof v === 'boolean')))
 
@@ -300,7 +331,7 @@ function renderView(ctx) {
         <div>
           <p class="kicker">${KIND_LABEL[kind]}</p>
           <h1>${esc(fullName(present))}</h1>
-          ${record.question ? `<p class="ask-line">所問：${esc(record.question)}</p>` : ''}
+          ${record.question ? `<p class="ask-line">所求：${esc(record.question)}</p>` : ''}
           <p class="sub">${kind === 'shared' ? `起卦日期：${formatDate(record.time)}` : `起卦時間：${formatTime(record.time)}`}</p>
         </div>
         <div class="no-box">第<b>${present.number}</b>卦</div>
@@ -313,6 +344,12 @@ function renderView(ctx) {
         <p class="motto-text">${esc(present.motto)}</p>
         <cite>My易經 · Might Easying</cite>
       </blockquote>
+
+      ${asking ? `
+      <section class="seek">
+        <div class="sd-scene seek-scene"><canvas role="img"></canvas><span class="seal-cap"></span></div>
+        <p class="seek-note">所求一字「<b></b>」· 墨隨卦勢聚散</p>
+      </section>` : ''}
 
       ${asking ? '' : `<section>
         <div class="sec-head"><h2>諸事評分</h2><span>宜 ${good.length} · 平 ${fair} · 忌 ${bad.length}</span></div>
@@ -436,7 +473,8 @@ function renderView(ctx) {
       <p class="fine">卦象由本機亂數產生，僅供娛樂與自省，不構成任何決策建議。</p>
     </section>`)
 
-  if (!asking) setupScoreDetail(node.querySelector('.score-grid'), scores, result)
+  if (asking) setupSeek(node, record, present, ctx.categories)
+  else setupScoreDetail(node.querySelector('.score-grid'), scores, result)
 
   node.querySelector('[data-share]').addEventListener('click', async () => {
     await copyToClipboard(shareURL(ctx.code))

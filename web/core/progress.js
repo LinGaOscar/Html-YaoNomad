@@ -19,23 +19,22 @@ export function dayKey(ms) {
 const questionKey = q => (typeof q === 'string' ? q.trim() : '')
 
 /**
- * 一筆紀錄在當天的身分：
- * daily 今日一卦（當天第一卦）、new 另問一事（換了問題）、again 再問（同一問題第二次）、profane 再三瀆（第三次以上）
- * @returns {'daily'|'new'|'again'|'profane'}
+ * 一筆紀錄在當天的身分：有寫所求的是 seek 求卦，不計入當天次數；
+ * 其餘依當天不帶所求的卦例數：daily 今日一卦（第一卦）、again 再問（第二次）、profane 再三瀆（第三次以上）
+ * @returns {'daily'|'seek'|'again'|'profane'}
  */
 export function castKind(records, rec) {
+  if (questionKey(rec.question)) return 'seek'
   const day = dayKey(rec.time)
-  const earlier = records.filter(r => r.id !== rec.id && r.time < rec.time && dayKey(r.time) === day)
-  if (!earlier.length) return 'daily'
-  const same = earlier.filter(r => questionKey(r.question) === questionKey(rec.question)).length
-  if (same === 0) return 'new'
-  return same === 1 ? 'again' : 'profane'
+  const earlier = records.filter(r => r.id !== rec.id && r.time < rec.time && dayKey(r.time) === day && !questionKey(r.question)).length
+  if (!earlier) return 'daily'
+  return earlier === 1 ? 'again' : 'profane'
 }
 
-/** 今天的第一卦；沒有則為 null */
+/** 今天的第一卦（求卦不算）；沒有則為 null */
 export function todayDaily(records, now = Date.now()) {
   const today = dayKey(now)
-  const list = records.filter(r => dayKey(r.time) === today)
+  const list = records.filter(r => dayKey(r.time) === today && !questionKey(r.question))
   return list.length ? list.reduce((a, b) => (a.time <= b.time ? a : b)) : null
 }
 

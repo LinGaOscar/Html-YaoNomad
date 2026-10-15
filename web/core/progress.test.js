@@ -12,23 +12,27 @@ const at = (y, m, d, h = 9) => new Date(y, m - 1, d, h).getTime()
 let seq = 0
 const rec = (time, extra = {}) => ({ id: `r${seq++}`, time, method: 'coin', values: [7, 7, 7, 7, 7, 7], coins: null, ...extra })
 
-test('castKind：當天第一卦、另問、再問、再三瀆', () => {
+test('castKind：求卦不計入當天次數；今日一卦、再問、再三瀆', () => {
+  const s = rec(at(2026, 10, 14, 8), { question: '要不要換工作' })
   const a = rec(at(2026, 10, 14, 9))
-  const b = rec(at(2026, 10, 14, 10), { question: '要不要換工作' })
+  const b = rec(at(2026, 10, 14, 10), { question: '面試順利嗎' })
   const c = rec(at(2026, 10, 14, 11))
   const d = rec(at(2026, 10, 14, 12), { question: '  ' })
-  const list = [d, c, b, a]
+  const list = [d, c, b, a, s]
+  assert.strictEqual(castKind(list, s), 'seek')
   assert.strictEqual(castKind(list, a), 'daily')
-  assert.strictEqual(castKind(list, b), 'new')
+  assert.strictEqual(castKind(list, b), 'seek')
   assert.strictEqual(castKind(list, c), 'again')
   assert.strictEqual(castKind(list, d), 'profane')
   assert.strictEqual(castKind([rec(at(2026, 10, 15)), ...list], list[0]), 'profane')
 })
 
-test('todayDaily：取今天最早的一卦', () => {
+test('todayDaily：取今天最早的一卦，求卦不算', () => {
+  const s = rec(at(2026, 10, 14, 8), { question: '要不要換工作' })
   const a = rec(at(2026, 10, 14, 9))
   const b = rec(at(2026, 10, 14, 15))
-  assert.strictEqual(todayDaily([b, a], at(2026, 10, 14, 20)), a)
+  assert.strictEqual(todayDaily([b, a, s], at(2026, 10, 14, 20)), a)
+  assert.strictEqual(todayDaily([s], at(2026, 10, 14, 20)), null)
   assert.strictEqual(todayDaily([b, a], at(2026, 10, 15, 8)), null)
 })
 

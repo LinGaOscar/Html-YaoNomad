@@ -85,13 +85,13 @@ async function renderHome(token) {
           <h1>觀卦知時，從容行事。</h1>
           <p class="lead">一卦觀諸事，為當下理清方向。</p>
           <form class="ask" autocomplete="off">
-            <label class="sr" for="question">心中所問</label>
-            <input id="question" name="q" maxlength="40" placeholder="心中所問（可留白）">
-            ${daily ? '<button class="btn ask-btn" type="submit">再起一卦</button>' : ''}
+            <label class="sr" for="question">心中所求</label>
+            <input id="question" name="q" maxlength="40" placeholder="心中所求">
+            <button class="btn ask-btn" type="submit">求卦</button>
           </form>
-          <p class="ask-hint">${daily
-            ? '今天已起過卦。換個問題是「另問」，同一個問題再問，易經會念你。'
-            : '選填。寫下想問的事，或留白直接看今日諸事。'}</p>
+          <p class="ask-hint">寫下心中所求再按求卦，不計入今日一卦。${daily
+            ? '<br>今天已起過卦，<a href="#/cast" class="again-link" data-cast>再起一卦</a>易經會念你。'
+            : ''}</p>
         </div>
         <nav class="actions">
           ${dailyEv ? `
@@ -132,15 +132,21 @@ async function renderHome(token) {
     </section>`)
 
   const input = node.querySelector('#question')
-  // 輸入所問時是問卦，不顯示問事範圍
+  // 輸入所求時是求卦，不顯示問事範圍
   const askLine = node.querySelector('.six')
   input.addEventListener('input', () => { askLine.hidden = Boolean(input.value.trim()) })
   node.querySelector('.ask').addEventListener('submit', e => {
     e.preventDefault()
+    if (!input.value.trim()) {
+      toast('先寫下心中所求')
+      input.focus()
+      return
+    }
     pendingQuestion = input.value
     location.hash = '#/cast'
   })
-  node.querySelector('[data-cast]')?.addEventListener('click', () => { pendingQuestion = input.value })
+  // 開始卜卦／再起一卦不帶所求
+  for (const a of node.querySelectorAll('[data-cast]')) a.addEventListener('click', () => { pendingQuestion = '' })
 
   for (const a of node.querySelectorAll('.action')) {
     a.addEventListener('pointerdown', e => {
@@ -166,7 +172,7 @@ async function renderCasting(token) {
       <div class="seal" aria-hidden="true">易</div>
       <p class="kicker">三錢六擲</p>
       <h1>正在起卦</h1>
-      <p class="lead">${question ? `所問：${esc(question)}` : '靜候卦象成形，為當下理清方向。'}</p>
+      <p class="lead">${question ? `所求：${esc(question)}` : '靜候卦象成形，為當下理清方向。'}</p>
       <div class="coins" aria-hidden="true">
         ${'<span class="coin"><span class="glyph-coin"><span>通</span><span>寶</span><span>開</span><span>元</span></span></span>'.repeat(3)}
       </div>
@@ -249,7 +255,7 @@ async function renderHistory(token) {
       <a class="hist-card" href="#/r/${esc(rec.id)}" style="animation-delay:${Math.min(i, 12) * 0.04}s">
         <div class="hist-top"><h2>${esc(fullName(result.present))}</h2><time>${formatTime(rec.time)}</time></div>
         <p class="hist-meta">${KIND_LABEL[castKind(list, rec)]} · ${methodName(rec.method)} · ${moving ? `${moving} 爻動 · 之 ${esc(fullName(result.future))}` : '無動爻'}${rated ? ' · 已回饋' : ''}</p>
-        ${rec.question ? `<p class="hist-q">所問：${esc(rec.question)}</p>` : ''}
+        ${rec.question ? `<p class="hist-q">所求：${esc(rec.question)}</p>` : ''}
         ${rec.question ? '' : `<p class="hist-top3">較高評分：${top.map(s => `${esc(s.name)} ${s.score}`).join(' · ')}</p>`}
       </a>`
   }).join('')

@@ -6,12 +6,12 @@ import { TRIGRAMS } from './core/hexagrams.js'
 import { ACHIEVEMENTS, currentStreak, summarize } from './core/progress.js'
 import { DEFAULT_TPLS, validTpls, tplsToSel, resolveSel } from './activities.js'
 
-export const VERSION = 'V3.23'
+export const VERSION = 'V3.24'
 export const LINE_POS = ['初爻', '二爻', '三爻', '四爻', '五爻', '上爻']
 export const LINE_KIND = { 6: '老陰（變）', 7: '少陽', 8: '少陰', 9: '老陽（變）' }
 export const COIN_FACE = { 2: '正', 3: '背' }
 export const LEVEL = { good: '上佳', fair: '一般', bad: '不宜' }
-export const KIND_LABEL = { daily: '今日一卦', new: '另問一事', again: '再問', profane: '再三瀆', shared: '朋友分享' }
+export const KIND_LABEL = { daily: '今日一卦', seek: '求卦', again: '再問', profane: '再三瀆', shared: '朋友分享' }
 const METHOD = { coin: '三錢法', manual: '手動六爻' }
 export const methodName = m => METHOD[m] || METHOD.coin
 const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六']
@@ -144,7 +144,7 @@ export async function copyToClipboard(text) {
  * @property {'coin'|'manual'} method
  * @property {number[]} values - 六爻值，index 0 = 初爻
  * @property {number[][]|null} coins - 每爻三枚硬幣（2/3）；手動輸入時為 null
- * @property {string} [question] - 心中所問
+ * @property {string} [question] - 心中所求
  * @property {string[]} [sel] - 起卦當時評分的事項代號；舊卦例沒有此欄，視為工程師
  * @property {number} [streak] - 起卦當下的連續起卦天數（含當天），大於 1 才記錄；例行類加分用
  * @property {(boolean|null)[]} [feedback] - 應驗回饋，index 同 sel
