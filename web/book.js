@@ -1,12 +1,11 @@
 'use strict'
 
-/** 我的卦簿（#/book）與自訂六事（#/settings） */
+/** 我的卦簿（#/book）：統計、成就、準度、圖鑑，以及「問事」範圍設定（#/book/ask 直接捲到問事） */
 
 import { fullName } from './core/hexagrams.js'
-import { CATEGORIES } from './core/scoring.js'
 import { ACHIEVEMENTS, summarize } from './core/progress.js'
-import { ITEMS, TEMPLATES, templateOf } from './activities.js'
-import { esc, cnNum, formatDate, isStale, mount, toast, hw, loadHexagrams, bookRecords, bookSince, resetBook, loadSel, saveSel } from './ui.js'
+import { ITEMS, TEMPLATES } from './activities.js'
+import { esc, cnNum, formatDate, isStale, mount, toast, hw, loadHexagrams, bookRecords, bookSince, resetBook, loadTpls, saveTpls } from './ui.js'
 
 /** 卦的小圖：六爻由下而上 */
 export function glyphHTML(hex) {
@@ -17,18 +16,19 @@ export function glyphHTML(hex) {
   return `<span class="glyph" aria-hidden="true">${bars.join('')}</span>`
 }
 
-export async function renderBook(token) {
+export async function renderBook(token, { focusAsk = false } = {}) {
   const records = bookRecords()
   const since = bookSince()
   const hexagrams = await loadHexagrams()
   if (isStale(token)) return
   const s = summarize(hexagrams, records)
+  const tpls = loadTpls()
   const acc = s.accuracy
   const pct = (hit, total) => Math.round((hit / total) * 100)
 
   const node = mount(`
     <section class="book">
-      <div class="topbar"><a href="#/">← 返回首頁</a><a href="#/settings">六事樣板 →</a></div>
+      <div class="topbar"><a href="#/">← 返回首頁</a><a href="#/book/ask">問事 →</a></div>
       <h1>我的卦簿</h1>
       <p class="sub">${since ? `自 ${formatDate(since)} 重置後起算。` : '起卦、收集與應驗，都記在這個瀏覽器裡。'}</p>
 
@@ -78,12 +78,40 @@ export async function renderBook(token) {
         <p class="fine">點亮的卦可以點開最近一次的卦例。只計本卦，變卦不算。</p>
       </section>
 
+      <section class="book-sec ask-sec" id="ask">
+        <div class="sec-head"><h2>問事</h2><span>可複選</span></div>
+        <p class="fine">選擇起卦時要占問的範圍，所選範圍的事項都會評分。只影響之後的新卦例。</p>
+        <div class="tpl-grid" role="group" aria-label="問事範圍">
+          ${TEMPLATES.map(t => {
+            const on = tpls.includes(t.id)
+            return `
+            <button class="tpl${on ? ' on' : ''}" type="button" aria-pressed="${on}" data-tpl="${t.id}">
+              <b>${t.name}</b>
+              <small>${t.sel.map(id => ITEMS[id].name).join('、')}</small>
+            </button>`
+          }).join('')}
+        </div>
+      </section>
+
       <section class="book-sec reset-sec">
         <div class="sec-head"><h2>重新開始</h2></div>
         <p class="fine">重置後，收集、成就、連續天數與準度都從零開始；歷史紀錄會保留。</p>
         <div><button class="btn danger-btn" type="button" data-reset>重置卦簿</button></div>
       </section>
     </section>`)
+
+  node.querySelectorAll('[data-tpl]').forEach(b => b.addEventListener('click', () => {
+    const id = b.dataset.tpl
+    const next = tpls.includes(id) ? tpls.filter(x => x !== id) : [...tpls, id]
+    if (!next.length) {
+      toast('至少要選一個問事範圍')
+      return
+    }
+    if (!saveTpls(TEMPLATES.map(t => t.id).filter(x => next.includes(x)))) return
+    toast(`問事：${TEMPLATES.filter(t => next.includes(t.id)).map(t => t.name).join('＋')}`)
+    renderBook(token, { focusAsk: true })
+  }))
+  if (focusAsk) node.querySelector('#ask').scrollIntoView({ block: 'start' })
 
   // 頁內二次確認：第一次點擊改為「確定重置？」，3 秒內再點一次才重置
   const btn = node.querySelector('[data-reset]')
@@ -102,58 +130,4 @@ export async function renderBook(token) {
       renderBook(token)
     }
   })
-}
-
-export function renderSettings(focusId = null) {
-  const sel = loadSel()
-  const current = templateOf(sel)
-  const node = mount(`
-    <section class="settings">
-      <div class="topbar"><a href="#/">← 返回首頁</a><a href="#/book">我的卦簿 →</a></div>
-      <h1>六事樣板</h1>
-      <p class="sub">選一個樣板，或在下方逐項替換。每個事項都有專屬的提醒與小故事。</p>
-
-      <div class="tpl-grid" role="radiogroup" aria-label="樣板">
-        ${TEMPLATES.map(t => `
-          <button class="tpl${t === current ? ' on' : ''}" type="button" role="radio" aria-checked="${t === current}" data-tpl="${t.id}">
-            <b>${t.name}</b>
-            <small>${t.sel.map(id => ITEMS[id].name).join('、')}</small>
-          </button>`).join('')}
-      </div>
-
-      <section class="book-sec">
-        <div class="sec-head"><h2>逐項替換</h2><span>目前：${current ? `${current.name}樣板` : '自訂組合'}</span></div>
-        <div class="slots">
-          ${sel.map((cur, i) => `
-            <div class="slot">
-              <label for="slot-${i}">第${'一二三四五六'[i]}事</label>
-              <select id="slot-${i}" data-i="${i}">${CATEGORIES.map((cat, c) => `
-                <optgroup label="${cat}類為主">${Object.entries(ITEMS).filter(([, it]) => it.cats[0] === c).map(([id, it]) =>
-                  `<option value="${id}"${cur === id ? ' selected' : ''}>${it.name}（${cat}・${CATEGORIES[it.cats[1]]}）</option>`).join('')}
-                </optgroup>`).join('')}
-              </select>
-            </div>`).join('')}
-        </div>
-      </section>
-      <p class="fine">括號內為主分類・副分類。選到已在其他格的事項時，兩格會對調。更換後只影響之後的新卦例，舊卦例保留當時的六事。</p>
-    </section>`)
-
-  const apply = (next, msg, focusId) => {
-    if (!saveSel(next)) return
-    toast(msg)
-    renderSettings(focusId)
-  }
-  if (focusId) document.getElementById(focusId)?.focus()
-  node.querySelectorAll('[data-tpl]').forEach(b => b.addEventListener('click', () => {
-    const t = TEMPLATES.find(x => x.id === b.dataset.tpl)
-    apply(t.sel, `已套用${t.name}樣板`, null)
-  }))
-  node.querySelectorAll('.slot select').forEach(el => el.addEventListener('change', () => {
-    const i = Number(el.dataset.i)
-    const next = [...sel]
-    const j = next.indexOf(el.value)
-    if (j >= 0) next[j] = next[i] // 已在其他格：兩格對調
-    next[i] = el.value
-    apply(next, j >= 0 ? `已與第${'一二三四五六'[j]}事對調` : `已換成${ITEMS[el.value].name}`, el.id)
-  }))
 }

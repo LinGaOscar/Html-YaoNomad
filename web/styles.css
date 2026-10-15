@@ -82,7 +82,7 @@
   color-scheme: dark;
 }
 
-/* 六事動畫的篆字：敬峰中山王篆子集（SIL OFL 1.1，見 fonts/README.md） */
+/* 事項動畫的篆字：敬峰中山王篆子集（SIL OFL 1.1，見 fonts/README.md） */
 @font-face {
   font-family: "YaoNomad Seal";
   src: url("./fonts/yao-seal.woff2") format("woff2");
@@ -656,7 +656,7 @@ h1, h2, h3, p { margin: 0; }
 .score.bad .meter i { color: var(--bad); }
 .note { margin-top: 10px; }
 
-/* ===== 六事展開說明 ===== */
+/* ===== 事項展開說明 ===== */
 .score-detail {
   --acc: var(--fair);
   grid-column: 1 / -1;
@@ -1030,7 +1030,7 @@ details.card[open] > summary { border-bottom: 1px solid var(--line-soft); }
 .dex-name { font-size: 0.78rem; letter-spacing: 0.04em; line-height: 1.3; }
 .dex-count { position: absolute; top: 4px; right: 6px; font-size: 0.7rem; color: var(--gold); font-variant-numeric: tabular-nums; }
 
-/* ===== 六事樣板 ===== */
+/* ===== 問事（卦簿內） ===== */
 .tpl-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 @media (min-width: 900px) { .tpl-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .tpl {
@@ -1052,20 +1052,6 @@ details.card[open] > summary { border-bottom: 1px solid var(--line-soft); }
 .tpl small { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
 .tpl.on { border-color: var(--gold); background: var(--gold-soft); box-shadow: 0 0 0 1px var(--gold); }
 .tpl.on b::after { content: " ✓"; color: var(--gold); }
-.slots { display: grid; gap: 10px; }
-@media (min-width: 600px) { .slots { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.slot { display: grid; grid-template-columns: 3.5em minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 12px; background: var(--card); border: 1px solid var(--line-soft); border-radius: 4px; }
-.slot label { color: var(--gold); letter-spacing: 0.1em; font-size: 0.9rem; }
-.slot select {
-  width: 100%;
-  min-height: 40px;
-  padding: 6px 10px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--paper-solid);
-  color: var(--text);
-  font: inherit;
-}
 .danger-btn { color: var(--bad); }
 .danger-btn:hover, .danger-btn.armed { border-color: var(--bad); }
 .danger-btn.armed { background: var(--bad-soft); }

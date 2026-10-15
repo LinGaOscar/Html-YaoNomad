@@ -1,12 +1,12 @@
 'use strict'
 
 /**
- * 六事展開說明的內容：小故事、八卦性質與循環動畫（inline SVG，配色走 CSS 色票）。
+ * 問事各事項的內容：提醒、小故事、印章、代表字與八卦性質。
  * 純介面內容，不影響評分邏輯。
  */
 
 /**
- * 事項池：cats 為 [主分類, 副分類]（六類見 core-spec「六事評分」），glyph 為循環動畫聚成的代表字，
+ * 事項池：cats 為 [主分類, 副分類]（六類見 core-spec「事項評分」），glyph 為循環動畫聚成的代表字，
  * tips／stories 為三種評等的提醒與小故事（主角是「小易」）。
  * 印章彩蛋（可省略）：low 分數低於 10、high 90 分以上、friday／monday 主分類套用了週五／週一規則。
  * 代號會存進紀錄與分享碼，只能用小寫英文字母，且不可更改。
@@ -232,39 +232,52 @@ export const ITEMS = {
   },
 }
 
-/** 樣板：每個樣板六個事項。第一個為預設（與核心的 DEFAULT_ITEMS 相同） */
+/** 問事範圍（樣板）：可複選，評分的事項為所選樣板的聯集 */
 export const TEMPLATES = [
+  { id: 'life', name: '生活', sel: ['dinner', 'reading', 'finance', 'tidy', 'trip', 'workout'] },
   { id: 'eng', name: '工程師', sel: ['meeting', 'report', 'debug', 'develop', 'deploy', 'fish'] },
   { id: 'admin', name: '行政', sel: ['meeting', 'memo', 'reimburse', 'schedule', 'approval', 'teatime'] },
   { id: 'student', name: '學生', sel: ['group', 'homework', 'exam', 'project', 'present', 'nap'] },
-  { id: 'life', name: '生活', sel: ['dinner', 'reading', 'finance', 'tidy', 'trip', 'workout'] },
 ]
 
-export const DEFAULT_SEL = TEMPLATES[0].sel
+/** 預設問事：生活 */
+export const DEFAULT_TPLS = ['life']
 
-/** 事項選擇是否合法：六個不重複且存在的事項代號 */
-export const validSel = sel => Array.isArray(sel) && sel.length === 6 && new Set(sel).size === 6 && sel.every(id => Object.hasOwn(ITEMS, id))
+/** 未記錄事項的舊卦例沿用工程師（與核心的 DEFAULT_ITEMS 相同） */
+export const LEGACY_SEL = TEMPLATES[1].sel
+
+const TPL_IDS = new Set(TEMPLATES.map(t => t.id))
+export const validTpls = tpls => Array.isArray(tpls) && tpls.length > 0 && tpls.every(id => TPL_IDS.has(id))
+
+/** 所選樣板 → 事項代號（依樣板順序合併、去重） */
+export const tplsToSel = tpls => [...new Set(TEMPLATES.filter(t => tpls.includes(t.id)).flatMap(t => t.sel))]
+
+/** 事項選擇是否合法：不重複且存在的事項代號 */
+export const validSel = sel => Array.isArray(sel) && sel.length > 0 && sel.length <= 30
+  && new Set(sel).size === sel.length && sel.every(id => Object.hasOwn(ITEMS, id))
 
 /** 事項選擇 → 評分用的事項 { id, name, cats } */
-export const resolveSel = sel => (validSel(sel) ? sel : DEFAULT_SEL).map(id => ({ id, name: ITEMS[id].name, cats: ITEMS[id].cats }))
+export const resolveSel = sel => (validSel(sel) ? sel : LEGACY_SEL).map(id => ({ id, name: ITEMS[id].name, cats: ITEMS[id].cats }))
 
-/** 目前選擇符合哪個樣板；都不符合為 null */
-export const templateOf = sel => TEMPLATES.find(t => t.sel.every((id, i) => id === sel[i])) || null
-
-/** 選擇 → 分享碼片段：預設樣板為 null，其他樣板用樣板代號，混搭用六個事項代號 */
-export function selToCode(sel) {
-  const t = templateOf(sel)
-  if (t) return t === TEMPLATES[0] ? null : t.id
-  return sel.join('.')
+/** 事項選擇剛好是哪幾個樣板的聯集；不是則為 null */
+export function tplsOf(sel) {
+  const tpls = TEMPLATES.filter(t => t.sel.every(id => sel.includes(id))).map(t => t.id)
+  const union = tplsToSel(tpls)
+  return union.length === sel.length && union.every((id, i) => id === sel[i]) ? tpls : null
 }
 
-/** 分享碼片段 → 選擇；無法解讀時為 null */
+/** 選擇 → 分享碼片段：樣板代號以 . 連接；舊卦例的非樣板組合用事項代號 */
+export function selToCode(sel) {
+  const tpls = tplsOf(sel)
+  return tpls ? tpls.join('.') : sel.join('.')
+}
+
+/** 分享碼片段 → 選擇；無片段為舊連結（工程師），無法解讀時為 null */
 export function codeToSel(code) {
-  if (!code) return DEFAULT_SEL
-  const t = TEMPLATES.find(x => x.id === code)
-  if (t) return t.sel
-  const sel = code.split('.')
-  return validSel(sel) ? sel : null
+  if (!code) return LEGACY_SEL
+  const ids = code.split('.')
+  if (validTpls(ids)) return tplsToSel(ids)
+  return validSel(ids) ? ids : null
 }
 
 /** 評分結果（帶 id）對應的提醒、小故事、印章 */

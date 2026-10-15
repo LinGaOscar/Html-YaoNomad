@@ -1,6 +1,6 @@
 'use strict'
 
-/** 六類，代碼即索引（規則見 core-spec/README.md「六事評分」） */
+/** 六類，代碼即索引（規則見 core-spec/README.md「事項評分」） */
 export const CATEGORIES = ['溝通', '分析', '創意', '例行', '時運', '休養']
 export const COMM = 0
 export const ANALYZE = 1
@@ -21,7 +21,7 @@ export const AFFINITY = [
   [65, 65, 55, 60, 95, 20], // 乾 天：剛健主導，利時運，不利休養
 ]
 
-/** 預設六事（工程師樣板）：cats 為 [主分類, 副分類] */
+/** 預設事項（工程師樣板，舊卦例沿用）：cats 為 [主分類, 副分類] */
 export const DEFAULT_ITEMS = [
   { id: 'meeting', name: '開會', cats: [COMM, ROUTINE] },
   { id: 'report', name: '撰寫報告', cats: [ANALYZE, CREATE] },
@@ -101,7 +101,7 @@ const levelOf = score => (score >= 70 ? 'good' : score < 40 ? 'bad' : 'fair')
  */
 
 /**
- * 依卜卦結果為六事評分：事項分數 = 主分類 70% + 副分類 30%
+ * 依卜卦結果為各事項評分：事項分數 = 主分類 70% + 副分類 30%
  * @param {import('./models.js').CastResult} result
  * @param {{ items?: {name: string, cats: number[]}[], date?: Date|null, streak?: number, categories?: CategoryScore[] }} [options]
  *   items：要評分的事項，預設 DEFAULT_ITEMS，事項的其他欄位（如 id）原樣帶到結果；categories：已算好的六類分數

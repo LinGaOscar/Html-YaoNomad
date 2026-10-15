@@ -80,7 +80,7 @@ test('summarize：依六類分數解鎖「時運不濟」與「日日是好日�
 
 test('accuracy：依主分類統計', () => {
   const a = accuracy([rec(at(2026, 10, 14), { feedback: [true, false, true] })])
-  // 預設六事：開會（溝通）、撰寫報告（分析）、抓BUG（分析）
+  // 預設事項：開會（溝通）、撰寫報告（分析）、抓BUG（分析）
   assert.deepStrictEqual(a.byCat[0], { cat: 0, hit: 1, miss: 0 })
   assert.deepStrictEqual(a.byCat[1], { cat: 1, hit: 1, miss: 1 })
 })

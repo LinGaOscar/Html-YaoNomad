@@ -6,11 +6,11 @@
  */
 
 const pad = n => String(n).padStart(2, '0')
-const SEL_RE = /^[a-z]+(\.[a-z]+){5}$|^[a-z]+$/
+const SEL_RE = /^[a-z]+(\.[a-z]+)*$/
 
 /**
  * @param {{ values: number[], time: number, streak?: number, sel?: string|null }} cast
- *   streak：連續起卦天數，大於 1 才帶；sel：樣板代號或六個事項代號以 . 連接，預設樣板時為 null
+ *   streak：連續起卦天數，大於 1 才帶；sel：樣板代號（或舊卦例的事項代號）以 . 連接
  * @returns {string}
  */
 export function encodeShare({ values, time, streak = 0, sel = null }) {

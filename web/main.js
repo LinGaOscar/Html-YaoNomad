@@ -1,17 +1,17 @@
 'use strict'
 
-/** 路由與首頁、起卦動畫、歷史紀錄；結果頁見 result.js，卦簿與自訂六事見 book.js */
+/** 路由與首頁、起卦動畫、歷史紀錄；結果頁見 result.js，卦簿與問事見 book.js */
 
 import { castHexagram } from './core/casting.js'
 import { fullName } from './core/hexagrams.js'
 import { ACHIEVEMENTS, castKind, dayKey, evaluate, summarize, todayDaily } from './core/progress.js'
 import { initInk, setInkMode, inkBurst, refreshColor } from './ink.js'
 import { renderResult, renderShared } from './result.js'
-import { renderBook, renderSettings, glyphHTML } from './book.js'
-import { resolveSel } from './activities.js'
+import { renderBook, glyphHTML } from './book.js'
+import { TEMPLATES } from './activities.js'
 import {
   VERSION, LINE_POS, LINE_KIND, COIN_FACE, KIND_LABEL, methodName, loadHexagrams, hw, esc, formatDay, formatTime, sleep,
-  nextToken, isStale, mount, toast, loadHistory, saveHistory, addRecord, loadSel, bookRecords, unlockedNow, announceUnlocks, migrateData,
+  nextToken, isStale, mount, toast, loadHistory, saveHistory, addRecord, loadTpls, bookRecords, unlockedNow, announceUnlocks, migrateData,
 } from './ui.js'
 
 const THEME_KEY = 'yaonomad.theme'
@@ -31,7 +31,8 @@ async function route() {
     if (hash === '/cast') return await renderCasting(token)
     if (hash === '/history') return await renderHistory(token)
     if (hash === '/book') return await renderBook(token)
-    if (hash === '/settings') return renderSettings()
+    if (hash === '/settings') return location.replace('#/book/ask') // 舊網址
+    if (hash === '/book/ask') return await renderBook(token, { focusAsk: true })
     const m = hash.match(/^\/r\/([\w-]+)(\/fb)?$/)
     if (m) return await renderResult(token, m[1], { focusFeedback: Boolean(m[2]) })
     await renderHome(token)
@@ -57,7 +58,7 @@ function feedbackNudge(history, now) {
 
 async function renderHome(token) {
   const history = loadHistory()
-  const items = resolveSel(loadSel())
+  const tpls = loadTpls()
   const now = Date.now()
   const hexagrams = history.length ? await loadHexagrams() : null
   if (isStale(token)) return
@@ -67,8 +68,7 @@ async function renderHome(token) {
   const stats = hexagrams ? summarize(hexagrams, bookRecords(), now) : null
   const nudge = hexagrams ? feedbackNudge(history, now) : null
   const nudgeEv = nudge ? evaluate(hexagrams, nudge.rec) : null
-  const sep = '<span class="sep"> · </span>'
-  const names = items.map(it => esc(it.name))
+  const askNames = TEMPLATES.filter(t => tpls.includes(t.id)).map(t => t.name).join('＋')
 
   const node = mount(`
     <section class="home">
@@ -83,7 +83,7 @@ async function renderHome(token) {
           <div class="seal" aria-hidden="true">易</div>
           <p class="kicker">靜心一念</p>
           <h1>觀卦知時，從容行事。</h1>
-          <p class="lead">一卦觀六事，為當下理清方向。</p>
+          <p class="lead">一卦觀諸事，為當下理清方向。</p>
           <form class="ask" autocomplete="off">
             <label class="sr" for="question">心中所問</label>
             <input id="question" name="q" maxlength="40" placeholder="心中所問（可留白）">
@@ -91,7 +91,7 @@ async function renderHome(token) {
           </form>
           <p class="ask-hint">${daily
             ? '今天已起過卦。換個問題是「另問」，同一個問題再問，易經會念你。'
-            : '選填。寫下想問的事，或留白直接看今日六事。'}</p>
+            : '選填。寫下想問的事，或留白直接看今日諸事。'}</p>
         </div>
         <nav class="actions">
           ${dailyEv ? `
@@ -105,7 +105,7 @@ async function renderHome(token) {
             <svg class="action-icon" viewBox="0 0 48 48" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="24" cy="17" r="10"/><circle cx="16.5" cy="29" r="10"/><circle cx="31.5" cy="29" r="10"/>
               <rect x="21" y="14" width="6" height="6"/></g></svg>
-            <span><span class="action-title">開始卜卦</span><span class="action-sub">起今日一卦 · 一次評分六件事</span></span>
+            <span><span class="action-title">開始卜卦</span><span class="action-sub">起今日一卦 · 一次評分所問諸事</span></span>
             <span class="action-arrow" aria-hidden="true">→</span>
           </a>`}
           <a class="action corner" href="#/history">
@@ -126,8 +126,7 @@ async function renderHome(token) {
           </a>
         </nav>
       </div>
-      <p class="six">${names.slice(0, 3).join(sep)}<span class="br"></span>${sep}${names.slice(3).join(sep)}
-        <a class="six-edit" href="#/settings">六事樣板</a></p>
+      <p class="six">問事：${askNames}<a class="six-edit" href="#/book/ask">調整</a></p>
       <footer class="home-foot"><span>三錢六擲，由下成卦</span><span>本機運算 · 離線可用</span></footer>
       <span class="version">${VERSION}</span>
     </section>`)

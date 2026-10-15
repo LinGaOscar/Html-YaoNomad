@@ -4,9 +4,9 @@
 
 import { TRIGRAMS } from './core/hexagrams.js'
 import { ACHIEVEMENTS, currentStreak, summarize } from './core/progress.js'
-import { DEFAULT_SEL, validSel, resolveSel, templateOf } from './activities.js'
+import { DEFAULT_TPLS, validTpls, tplsToSel, resolveSel } from './activities.js'
 
-export const VERSION = 'V3.13'
+export const VERSION = 'V3.20'
 export const LINE_POS = ['初爻', '二爻', '三爻', '四爻', '五爻', '上爻']
 export const LINE_KIND = { 6: '老陰（變）', 7: '少陽', 8: '少陰', 9: '老陽（變）' }
 export const COIN_FACE = { 2: '正', 3: '背' }
@@ -17,7 +17,7 @@ export const methodName = m => METHOD[m] || METHOD.coin
 const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六']
 
 const HISTORY_KEY = 'yaonomad.history'
-const SEL_KEY = 'yaonomad.sel'
+const TPLS_KEY = 'yaonomad.tpls'
 const BOOK_SINCE_KEY = 'yaonomad.bookSince'
 const DATA_VERSION_KEY = 'yaonomad.dataVersion'
 /** 資料版本：評分規則改版（六類＋專屬規則）時遞增，舊資料一律清除 */
@@ -50,7 +50,7 @@ export function loadHexagrams() {
 /** 全站文字一律半形：全形標點轉成半形，資料檔維持原樣，只在顯示時轉換 */
 const HALF = {
   '，': ', ', '。': '. ', '、': ', ', '：': ': ', '；': '; ', '！': '! ', '？': '? ',
-  '（': '(', '）': ')', '「': '"', '」': '"', '『': "'", '』': "'", '　': ' ', '…': '...', '—': '-', '～': '~', '／': '/',
+  '（': '(', '）': ')', '「': '"', '」': '"', '『': "'", '』': "'", '　': ' ', '…': '...', '—': '-', '～': '~', '／': '/', '＋': '+',
 }
 const HALF_RE = new RegExp(`[${Object.keys(HALF).join('')}]`, 'g')
 export const hw = s => String(s).replace(HALF_RE, c => HALF[c])
@@ -145,9 +145,9 @@ export async function copyToClipboard(text) {
  * @property {number[]} values - 六爻值，index 0 = 初爻
  * @property {number[][]|null} coins - 每爻三枚硬幣（2/3）；手動輸入時為 null
  * @property {string} [question] - 心中所問
- * @property {string[]} [sel] - 起卦當時的六事（事項代號）；預設工程師樣板時省略
+ * @property {string[]} [sel] - 起卦當時評分的事項代號；舊卦例沒有此欄，視為工程師
  * @property {number} [streak] - 起卦當下的連續起卦天數（含當天），大於 1 才記錄；例行類加分用
- * @property {(boolean|null)[]} [feedback] - 應驗回饋，index 同六事
+ * @property {(boolean|null)[]} [feedback] - 應驗回饋，index 同 sel
  * 載入後另有 items（由 sel 解出的 { id, name, type }），只存在記憶體，不寫回儲存
  */
 
@@ -174,22 +174,22 @@ export function saveHistory(list) {
 }
 
 export function addRecord(method, values, coins, question = '') {
-  const sel = loadSel()
+  const sel = tplsToSel(loadTpls())
   const history = loadHistory()
   const record = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), time: Date.now(), method, values, coins }
   if (question.trim()) record.question = question.trim().slice(0, 40)
-  if (templateOf(sel) !== templateOf(DEFAULT_SEL)) record.sel = sel
+  record.sel = sel
   const streak = currentStreak([record, ...history], record.time)
   if (streak > 1) record.streak = streak
   saveHistory([record, ...history])
   return record
 }
 
-/** 評分規則改版後清除舊資料（歷史、六事選擇、卦簿起算點、舊版自訂設定）；啟動時呼叫一次 */
+/** 評分規則改版後清除舊資料（歷史、問事選擇、卦簿起算點、舊版設定）；啟動時呼叫一次 */
 export function migrateData() {
   try {
     if (Number(localStorage.getItem(DATA_VERSION_KEY)) === DATA_VERSION) return
-    for (const key of [HISTORY_KEY, SEL_KEY, BOOK_SINCE_KEY, 'yaonomad.items']) localStorage.removeItem(key)
+    for (const key of [HISTORY_KEY, TPLS_KEY, BOOK_SINCE_KEY, 'yaonomad.sel', 'yaonomad.items']) localStorage.removeItem(key)
     localStorage.setItem(DATA_VERSION_KEY, String(DATA_VERSION))
   } catch {}
 }
@@ -198,21 +198,21 @@ export function updateRecord(id, patch) {
   saveHistory(loadHistory().map(r => (r.id === id ? { ...r, ...patch } : r)))
 }
 
-// ---------- 六事樣板 ----------
+// ---------- 問事 ----------
 
-/** 目前的六事：依事類排列的事項代號 */
-export function loadSel() {
+/** 目前的問事範圍：樣板代號（可複選），預設生活 */
+export function loadTpls() {
   try {
-    const sel = JSON.parse(localStorage.getItem(SEL_KEY) || 'null')
-    return validSel(sel) ? sel : DEFAULT_SEL
+    const tpls = JSON.parse(localStorage.getItem(TPLS_KEY) || 'null')
+    return validTpls(tpls) ? tpls : DEFAULT_TPLS
   } catch {
-    return DEFAULT_SEL
+    return DEFAULT_TPLS
   }
 }
 
-export function saveSel(sel) {
+export function saveTpls(tpls) {
   try {
-    localStorage.setItem(SEL_KEY, JSON.stringify(sel))
+    localStorage.setItem(TPLS_KEY, JSON.stringify(tpls))
     return true
   } catch {
     toast('無法保存設定（瀏覽器儲存空間不可用）')

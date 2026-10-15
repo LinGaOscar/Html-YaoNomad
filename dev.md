@@ -15,11 +15,11 @@
   index.html        外框（標題列、粒子畫布）
   main.js           hash 路由、首頁、起卦動畫、歷史紀錄
   result.js         結果頁（自己的卦例、朋友分享）
-  book.js           我的卦簿、六事樣板
+  book.js           我的卦簿（含問事範圍）
   ui.js             共用工具與 localStorage 存取
   ink.js            水墨粒子背景（純視覺）
   activities.js     事項池與樣板（分類、代表字、提醒、小故事、印章文字）、八卦性質
-  inkscene.js       六事展開面板的水墨粒子循環動畫（依主分類流動、聚成代表字）
+  inkscene.js       事項展開面板的水墨粒子循環動畫（依主分類流動、聚成代表字）
   styles.css        色票與版面（深淺色）
   service-worker.js 網路優先、離線回快取；改靜態檔後請遞增 CACHE 版本
 /tui-js/            終端機介面，main.js 直接 import ../web/core/

@@ -55,7 +55,7 @@ for (const [name, text] of [['styles.css', css], ['bundle', bundle]]) {
 
 const page = `<title>My易經</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="三錢六擲, 一卦觀六事.">
+<meta name="description" content="三錢六擲, 一卦觀諸事.">
 ${fonts}
 <style>
 ${css}

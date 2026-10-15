@@ -6,7 +6,7 @@ import { fullName, TRIGRAMS } from './core/hexagrams.js'
 import { AFFINITY, CATEGORIES, FORTUNE } from './core/scoring.js'
 import { castKind, evaluate, todayDaily } from './core/progress.js'
 import { encodeShare, decodeShare } from './core/share.js'
-import { TRAITS, relation, tipFor, storyFor, stampsOf, glyphFor, sealFor, DEFAULT_SEL, resolveSel, selToCode, codeToSel } from './activities.js'
+import { TRAITS, relation, tipFor, storyFor, stampsOf, glyphFor, sealFor, LEGACY_SEL, resolveSel, selToCode, codeToSel } from './activities.js'
 import { startInkScene } from './inkscene.js'
 import { inkBurst } from './ink.js'
 import {
@@ -52,7 +52,7 @@ function stampFor(s) {
 }
 
 const shareCode = record => encodeShare({
-  values: record.values, time: record.time, streak: record.streak || 0, sel: selToCode(record.sel || DEFAULT_SEL),
+  values: record.values, time: record.time, streak: record.streak || 0, sel: selToCode(record.sel || LEGACY_SEL),
 })
 
 const catLabel = s => (s.cats[1] !== undefined && s.cats[1] !== s.cats[0]
@@ -121,7 +121,7 @@ function detailHTML(s, result) {
     </div>`
 }
 
-/** 六事卡片點擊展開：說明面板插在該卡所在列的下方，橫跨整列 */
+/** 事項卡片點擊展開：說明面板插在該卡所在列的下方，橫跨整列 */
 function setupScoreDetail(grid, scores, result) {
   const cards = [...grid.querySelectorAll('.score')]
   const panel = document.createElement('div')
@@ -203,7 +203,7 @@ function copyText(ctx) {
     '',
     `今日六類：${ctx.categories.map(c => `${c.name} ${c.score}`).join('、')}`,
     '',
-    '六事評分：',
+    '諸事評分：',
     ...scores.map(s => `  ${s.name} ${s.score}（${LEVEL[s.level]}）${stampFor(s) ? `［${stampFor(s)}］` : ''}`),
     '',
     `本卦卦辭：${present.name}：${present.judgment}`,
@@ -311,7 +311,7 @@ function renderView(ctx) {
       </blockquote>
 
       <section>
-        <div class="sec-head"><h2>六事評分</h2><span>宜 ${good.length} · 平 ${fair} · 忌 ${bad.length}</span></div>
+        <div class="sec-head"><h2>諸事評分</h2><span>宜 ${good.length} · 平 ${fair} · 忌 ${bad.length}</span></div>
         <p class="summary">宜：${listText(good)}<br>忌：${listText(bad, 'bad')}</p>
         ${categoriesHTML(ctx.categories)}
         <div class="score-grid">
@@ -416,7 +416,7 @@ function renderView(ctx) {
               <p>三枚硬幣同擲，正面（字面）記 2、背面記 3，加總得 6、7、8、9。</p>
               <p>6 老陰、9 老陽為變爻，會陰陽互換形成變卦；7 少陽、8 少陰不變。</p>
               <p>共擲六次，由下往上排成六爻，得本卦；有變爻再得變卦。</p>
-              <p>六事動畫中的篆字取自「敬峰中山王篆」字型（劉敬峰，SIL OFL 1.1），為戰國中山國銅器金文風格。</p>
+              <p>事項動畫中的篆字取自「敬峰中山王篆」字型（劉敬峰，SIL OFL 1.1），為戰國中山國銅器金文風格。</p>
             </div>
           </details>
         </aside>

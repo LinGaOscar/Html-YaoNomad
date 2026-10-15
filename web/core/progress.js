@@ -70,7 +70,7 @@ export function bestStreak(records) {
   return best
 }
 
-/** 計算一筆紀錄的卦象、六類分數與六事評分；爻值不合法時回傳 null */
+/** 計算一筆紀錄的卦象、六類分數與事項評分；爻值不合法時回傳 null */
 export function evaluate(hexagrams, rec) {
   try {
     const result = castFromLines(hexagrams, typeof rec.question === 'string' ? rec.question : '', rec.values)
