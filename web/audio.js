@@ -5,9 +5,10 @@
  * 全部以 Web Audio 即時合成，不載入任何音檔；瀏覽器規定要使用者先點擊過才會出聲。
  *
  * 曲式（每小節 16 個十六分音符，84 BPM），循環：引子 4 小節 → A 段 8 → B 段 8 → A 段 8 → 間奏 4。
- * - 古箏：三角波＋鋸齒波、濾波快速收束，起音略低再滑上（按音），長音加揉弦；句尾偶有刮奏
- * - 和聲：空五度長音鋪底；低音隨和弦根音 E–G–A–D
- * - 電子：柔和的大鼓、閉合鈸、木魚取代小鼓；B 段加入方波琶音
+ * - 古箏（主角）：三角波＋鋸齒波、濾波快速收束，起音略低再滑上（按音），長音加揉弦；
+ *   主旋律之外另有低音區的分解和弦（第二把箏），每段句尾刮奏，偶爾八度花指
+ * - 和聲：空五度長音輕鋪底；低音隨和弦根音 E–G–A–D
+ * - 電子（淡）：只在 A／B 段加輕柔的大鼓、反拍閉合鈸與木魚
  * 旋律由種子亂數依五聲音階隨機漫步產生，每一輪換新種子，所以每圈略有不同。
  */
 
@@ -54,7 +55,7 @@ function ensure() {
     musicBus.gain.value = 0
     musicBus.connect(comp)
     sfxBus = ctx.createGain()
-    sfxBus.gain.value = 0.7
+    sfxBus.gain.value = 0.4
     sfxBus.connect(comp)
     noiseBuf = makeNoise(2)
 
@@ -169,10 +170,10 @@ function bass(t, midi, dur) {
   lp.type = 'lowpass'
   lp.frequency.value = 280
   const sqg = ctx.createGain()
-  sqg.gain.value = 0.18
+  sqg.gain.value = 0.06
   const g = ctx.createGain()
   g.gain.setValueAtTime(0.0001, t)
-  g.gain.linearRampToValueAtTime(0.32, t + 0.02)
+  g.gain.linearRampToValueAtTime(0.26, t + 0.02)
   g.gain.setTargetAtTime(0.0001, t + dur * 0.7, dur * 0.2)
   o.connect(lp)
   sq.connect(sqg).connect(lp)
@@ -183,11 +184,11 @@ function bass(t, midi, dur) {
 function pad(t, midis, dur) {
   const g = ctx.createGain()
   g.gain.setValueAtTime(0.0001, t)
-  g.gain.linearRampToValueAtTime(0.05, t + dur * 0.35)
+  g.gain.linearRampToValueAtTime(0.03, t + dur * 0.35)
   g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.6)
   const lp = ctx.createBiquadFilter()
   lp.type = 'lowpass'
-  lp.frequency.value = 850
+  lp.frequency.value = 650
   lp.connect(g)
   g.connect(musicBus)
   g.connect(reverbIn)
@@ -224,7 +225,7 @@ function kick(t) {
   o.frequency.setValueAtTime(110, t)
   o.frequency.exponentialRampToValueAtTime(42, t + 0.14)
   const g = ctx.createGain()
-  env(g, t, 0.003, 0.55, 0.32)
+  env(g, t, 0.003, 0.32, 0.28)
   o.connect(g).connect(musicBus)
   o.start(t)
   o.stop(t + 0.4)
@@ -246,22 +247,6 @@ function woodblock(t, v = 0.16) {
   g.connect(send).connect(reverbIn)
   o.start(t)
   o.stop(t + 0.15)
-}
-
-function arp(t, midi) {
-  const o = ctx.createOscillator()
-  o.type = 'square'
-  o.frequency.value = hz(midi)
-  const lp = ctx.createBiquadFilter()
-  lp.type = 'lowpass'
-  lp.frequency.setValueAtTime(2200, t)
-  lp.frequency.exponentialRampToValueAtTime(500, t + 0.15)
-  const g = ctx.createGain()
-  env(g, t, 0.003, 0.035, 0.18)
-  o.connect(lp).connect(g).connect(musicBus)
-  g.connect(echoIn)
-  o.start(t)
-  o.stop(t + 0.25)
 }
 
 // ---------- 編曲 ----------
@@ -335,27 +320,37 @@ function scheduleStep(t, n) {
   if (name !== 'intro' && step === 8) bass(t, chord.root + (bar % 2 ? 7 : 12), STEP * 5)
 
   if (drums) {
-    if (step === 0 || step === 10) kick(t)
-    if (step % 2 === 0) hat(t, step % 4 === 2 ? 0.05 : 0.025)
-    if (step === 4 || step === 12) woodblock(t, step === 12 ? 0.17 : 0.11)
-    if (name === 'B' && step % 2 === 1) arp(t, chord.root + 24 + [0, 7, 12, 7][(step >> 1) % 4])
+    if (step === 0 || (name === 'B' && step === 10)) kick(t)
+    if (step % 4 === 2) hat(t, 0.018)
+    if (step === 12) woodblock(t, 0.12)
   } else if (step === 12 && name === 'break') {
-    woodblock(t, 0.1)
+    woodblock(t, 0.08)
   }
 
-  // 旋律：A／B 段完整；引子與間奏只彈每小節第一個音
+  // 第二把箏：低音區分解和弦（根、五、八、五），A 段用八分音符、B 段與間奏用四分
+  const every = name === 'A' ? 2 : 4
+  if (name !== 'intro' && step % every === 0) {
+    const tones = [0, 7, 12, 7]
+    zheng(t, chord.root + 12 + tones[(step / every) % 4], 0.09)
+  }
+
+  // 主旋律：A／B 段完整；引子與間奏放輕
   const phrase = name === 'B' ? motifs.B : motifs.A
   const notes = phrase[bar % 4]
-  const variant = barIn >= 4 && bar % 4 === 3 // 後半句最後一小節改成長音收尾
+  const soft = name === 'intro' || name === 'break'
+  const ending = barIn % 4 === 3 && barIn >= 3 // 每四小節最後一小節：長音收尾
   for (const note of notes) {
     if (note.step !== step) continue
-    if ((name === 'intro' || name === 'break') && note !== notes[0]) continue
-    if (variant && note !== notes[0]) continue
-    zheng(t, note.midi, name === 'intro' || name === 'break' ? 0.16 : 0.2, variant || note.len >= 5)
+    if (ending && note !== notes[0]) continue
+    const long = ending || note.len >= 5
+    zheng(t, note.midi, soft ? 0.17 : 0.24, long)
+    // 花指：長音偶爾疊上高八度
+    if (long && !soft && (bar + step) % 3 === 0) zheng(t + 0.02, note.midi + 12, 0.08)
   }
-  // 句尾刮奏
-  if (variant && step === 8 && name === 'A') {
-    for (let k = 0; k < 7; k++) zheng(t + k * 0.035, SCALE[3 + k], 0.07)
+  // 句尾刮奏（由低往高，每段最後一小節）
+  const lastBar = barIn === (name === 'intro' || name === 'break' ? 3 : 7)
+  if (lastBar && step === 8) {
+    for (let k = 0; k < 9; k++) zheng(t + k * 0.032, SCALE[2 + k], 0.06 + k * 0.006)
   }
 }
 
@@ -372,7 +367,7 @@ function startMusic() {
   nextTime = ctx.currentTime + 0.1
   musicBus.gain.cancelScheduledValues(ctx.currentTime)
   musicBus.gain.setValueAtTime(musicBus.gain.value, ctx.currentTime)
-  musicBus.gain.linearRampToValueAtTime(0.55, ctx.currentTime + 2.5)
+  musicBus.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 2.5)
   timer = setInterval(tick, 25)
   tick()
 }
@@ -393,7 +388,7 @@ function stopMusic() {
 export function brush() {
   if (!sfxOn || !ensure()) return
   const t = ctx.currentTime + 0.005
-  const dur = 0.16 + Math.random() * 0.08
+  const dur = 0.12 + Math.random() * 0.06
   const f0 = 2000 + Math.random() * 900
 
   const body = ctx.createBufferSource()
@@ -406,7 +401,7 @@ export function brush() {
   bp.frequency.exponentialRampToValueAtTime(f0 * 0.4, t + dur)
   const g = ctx.createGain()
   g.gain.setValueAtTime(0.0001, t)
-  g.gain.linearRampToValueAtTime(0.32, t + dur * 0.3)
+  g.gain.linearRampToValueAtTime(0.16, t + dur * 0.3)
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
   body.connect(bp).connect(g).connect(sfxBus)
   body.start(t, Math.random() * 1.5)
@@ -420,7 +415,7 @@ export function brush() {
   hp.frequency.value = 5200
   const hg = ctx.createGain()
   hg.gain.setValueAtTime(0.0001, t)
-  hg.gain.linearRampToValueAtTime(0.06, t + 0.02)
+  hg.gain.linearRampToValueAtTime(0.025, t + 0.02)
   hg.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.7)
   hair.connect(hp).connect(hg).connect(sfxBus)
   hair.start(t, Math.random() * 1.5)
