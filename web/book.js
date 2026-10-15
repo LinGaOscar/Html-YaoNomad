@@ -7,6 +7,7 @@ import { castFromLines } from './core/casting.js'
 import { scoreCategories } from './core/scoring.js'
 import { ACHIEVEMENTS, summarize } from './core/progress.js'
 import { ITEMS, TEMPLATES, TRAITS } from './activities.js'
+import { soundState, setMusic, setSfx, brush } from './audio.js'
 import { esc, cnNum, formatDate, isStale, mount, toast, hw, loadHexagrams, bookRecords, bookSince, resetBook, loadTpls, saveTpls } from './ui.js'
 
 /** 卦的小圖：六爻由下而上 */
@@ -125,6 +126,7 @@ export async function renderBook(token, { focusAsk = false } = {}) {
   const acc = s.accuracy
   const pct = (hit, total) => Math.round((hit / total) * 100)
 
+  const sound = soundState()
   const node = mount(`
     <section class="book">
       <div class="topbar"><a href="#/">← 返回首頁</a><a href="#/book/ask">問事 →</a></div>
@@ -179,6 +181,18 @@ export async function renderBook(token, { focusAsk = false } = {}) {
         </div>
       </section>
 
+      <section class="book-sec">
+        <div class="sec-head"><h2>聲音</h2><span>即時合成</span></div>
+        <div class="tpl-grid" role="group" aria-label="聲音">
+          <button class="tpl${sound.music ? ' on' : ''}" type="button" aria-pressed="${sound.music}" data-sound="music">
+            <b>背景音樂</b><small>原創〈墨韻〉· 電子節拍配古箏, 五聲音階</small>
+          </button>
+          <button class="tpl${sound.sfx ? ' on' : ''}" type="button" aria-pressed="${sound.sfx}" data-sound="sfx">
+            <b>點擊音效</b><small>毛筆掃過宣紙</small>
+          </button>
+        </div>
+      </section>
+
       <section class="book-sec reset-sec">
         <div class="sec-head"><h2>輪迴（重來）</h2></div>
         <p class="reset-text">前塵既盡，卦簿歸空；今日之卦、往日之例，盡付東流，一切從頭。</p>
@@ -186,6 +200,18 @@ export async function renderBook(token, { focusAsk = false } = {}) {
         <div><button class="btn danger-btn" type="button" data-reset>入輪迴</button></div>
       </section>
     </section>`)
+
+  node.querySelectorAll('[data-sound]').forEach(b => b.addEventListener('click', () => {
+    const key = b.dataset.sound
+    const on = !soundState()[key]
+    if (key === 'music') setMusic(on)
+    else {
+      setSfx(on)
+      if (on) brush()
+    }
+    b.classList.toggle('on', on)
+    b.setAttribute('aria-pressed', String(on))
+  }))
 
   node.querySelectorAll('[data-tpl]').forEach(b => b.addEventListener('click', () => {
     const id = b.dataset.tpl

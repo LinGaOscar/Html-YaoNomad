@@ -17,7 +17,7 @@ const read = p => readFileSync(join(web, p), 'utf8')
 // 依相依順序排列；每個模組包成 IIFE，避免頂層名稱互相衝突
 const MODULES = [
   'core/hexagrams.js', 'core/casting.js', 'core/scoring.js', 'core/progress.js', 'core/share.js',
-  'ink.js', 'activities.js', 'ui.js', 'inkscene.js', 'result.js', 'book.js', 'main.js',
+  'ink.js', 'audio.js', 'activities.js', 'ui.js', 'inkscene.js', 'result.js', 'book.js', 'main.js',
 ]
 
 function wrapModule(path) {

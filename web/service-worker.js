@@ -1,13 +1,14 @@
 'use strict'
 
 // 改動任何靜態檔後請遞增版本，舊快取會在 activate 時清除
-const CACHE = 'yaonomad-v3.32-1'
+const CACHE = 'yaonomad-v3.33-1'
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
   './main.js',
   './ink.js',
+  './audio.js',
   './activities.js',
   './inkscene.js',
   './ui.js',

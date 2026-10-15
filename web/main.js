@@ -6,6 +6,7 @@ import { castHexagram } from './core/casting.js'
 import { fullName } from './core/hexagrams.js'
 import { ACHIEVEMENTS, castKind, dayKey, evaluate, summarize, todayDaily } from './core/progress.js'
 import { initInk, setInkMode, inkBurst, refreshColor } from './ink.js'
+import { initSound, setMusic, soundState, onSoundChange } from './audio.js'
 import { renderResult, renderShared, seekInfo } from './result.js'
 import { renderBook, renderDex, glyphHTML } from './book.js'
 import {
@@ -330,6 +331,17 @@ function setupChrome() {
     refreshColor()
   })
   dark.addEventListener('change', refreshColor)
+
+  const musicBtn = document.getElementById('music-btn')
+  const syncMusic = ({ music }) => musicBtn.setAttribute('aria-pressed', String(music))
+  syncMusic(soundState())
+  onSoundChange(syncMusic)
+  musicBtn.addEventListener('click', () => {
+    const on = !soundState().music
+    setMusic(on)
+    toast(on ? '背景音樂：墨韻' : '背景音樂已關')
+  })
+  initSound()
 
   const fsBtn = document.getElementById('fs-btn')
   if (document.fullscreenEnabled) {

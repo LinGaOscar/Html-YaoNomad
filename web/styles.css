@@ -1147,3 +1147,8 @@ details.card.reading.fold[open] > summary { border-bottom: none; }
 .dx-nav { display: flex; justify-content: space-between; margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
 .dx-head .kicker { letter-spacing: 0.12em; white-space: nowrap; }
 .dx-lean.veiled .dx-chip { filter: blur(4px); user-select: none; }
+
+/* 音樂按鈕：關閉時顯示斜線 */
+#music-btn .mute-slash { opacity: 1; transition: opacity 0.2s; }
+#music-btn[aria-pressed="true"] .mute-slash { opacity: 0; }
+#music-btn[aria-pressed="true"] { color: var(--gold); border-color: var(--gold); }
