@@ -64,7 +64,12 @@ node --test web/core/*.test.js                                           # 全�
 node --test --test-name-pattern="<測試名稱>" web/core/casting.test.js   # 執行單一測試
 ```
 
-需以靜態伺服器執行（例如 `npx serve web`）；修改 `web/` 靜態檔後須遞增 `service-worker.js` 的 `CACHE` 版本；`index.html` 使用 ES module 與 `fetch` 載入資料，以 `file://` 直接開啟會失敗。push 到 `main` 會由 `.github/workflows/deploy-pages.yml` 自動將 `/web` 部署到 GitHub Pages。
+```bash
+node scripts/build-artifact.mjs [輸出路徑] --share-base https://claude.ai/artifact/5spvV1jA7SNqdPLSfsKrdG   # 單檔版（Claude Artifact），新增模組要加進腳本的 MODULES
+python3 scripts/build-seal-font.py <JFZSKSealScript_V3.ttf>   # 新增代表字後重產篆字子集（需 fonttools、brotli）
+```
+
+需以靜態伺服器執行（例如 `npx serve web`）；修改 `web/` 靜態檔後須遞增 `service-worker.js` 的 `CACHE` 版本與 `ui.js` 的 `VERSION`（首頁右下角顯示）；新增靜態檔要加進 `service-worker.js` 的 `ASSETS`；`index.html` 使用 ES module 與 `fetch` 載入資料，以 `file://` 直接開啟會失敗。push 到 `main` 會由 `.github/workflows/deploy-pages.yml` 自動將 `/web` 部署到 GitHub Pages。
 
 ## 卜卦演算法（三硬幣法）
 
