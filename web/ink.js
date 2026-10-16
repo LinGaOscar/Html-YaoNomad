@@ -3,9 +3,9 @@
 /**
  * 水墨粒子背景：墨點沿流場漂移、留下淡淡墨痕；起卦時向中心聚攏，成卦時暈開。
  * 平時三種主題循環（各 40 秒，切換時 5 秒內漸變，角落短暫浮出主題名）：
- * - 雲湧：墨點隨橫向起伏的氣流翻湧，雲霧加濃
- * - 崑崙：墨點沿層疊山脊沉積成山形，少數如雪緩緩飄落
- * - 明鏡：墨點繞畫面中心靜靜成環，水面不時盪開漣漪
+ * - 雲湧：墨點隨橫向起伏的氣流翻湧，雲霧加濃；氣流方向每輪左右交替
+ * - 崑崙：墨點沿層疊山脊沉積成山形，少數如雪緩緩飄落；山形緩緩往左捲動
+ * - 明鏡：墨點繞畫面中心靜靜成環，環徑呼吸般縮放，水面不時盪開漣漪
  * 只負責視覺，與卜卦邏輯無關。
  */
 
@@ -38,11 +38,16 @@ function themeState() {
   const sec = (performance.now() - clock0) / 1000
   const n = Math.floor(sec / THEME_SEC)
   const local = sec - n * THEME_SEC
-  return { cur: n % THEMES.length, prev: (n + THEMES.length - 1) % THEMES.length, k: n === 0 ? 1 : smooth(Math.min(1, local / FADE_SEC)), local, first: n === 0 }
+  return { n, cur: n % THEMES.length, prev: (n + THEMES.length - 1) % THEMES.length, k: n === 0 ? 1 : smooth(Math.min(1, local / FADE_SEC)), local, first: n === 0 }
 }
 
-/** 崑崙：三層山脊的高度（layer -1 最遠最高）；1 − |sin| 讓山峰尖、山谷圓 */
+/** 雲湧的氣流方向：每輪雲湧左右交替（1 往右、-1 往左） */
+let wind = 1
+
+/** 崑崙：三層山脊的高度（layer -1 最遠最高）；1 − |sin| 讓山峰尖、山谷圓。
+ * 山形隨時間往左捲動，近山快、遠山慢，像行旅中看山 */
 const ridge = (x, layer) => {
+  x += t * (0.3 - (1 - layer) * 0.1)
   const peaks = 1 - Math.abs(Math.sin(x * (0.0042 - layer * 0.0008) + layer * 1.9))
   return h * (0.5 + layer * 0.09) - h * (0.13 - layer * 0.025) * peaks ** 1.6 - h * 0.012 * Math.sin(x * 0.02 + layer)
 }
@@ -51,10 +56,10 @@ const ridge = (x, layer) => {
 function themeForce(i, p) {
   const frac = (p.seed % 1 + 1) % 1
   if (i === 0) {
-    // 雲湧：往右的氣流，上下翻捲
+    // 雲湧：橫向氣流（方向見 wind），上下翻捲
     const roll = Math.sin(p.y * 0.008 + t * 0.006 + p.seed) * 0.02
     return {
-      ax: 0.022 + roll,
+      ax: 0.022 * wind + roll,
       ay: Math.sin(p.x * 0.005 - t * 0.007 + p.seed) * 0.022 - 0.002,
     }
   }
@@ -65,10 +70,10 @@ function themeForce(i, p) {
     const ty = ridge(p.x, layer) + (frac * 97 % 1) * 40
     return { ax: 0.007, ay: Math.max(-0.08, Math.min(0.08, (ty - p.y) * 0.003)) - p.vy * 0.04 }
   }
-  // 明鏡：繞中心成環
+  // 明鏡：繞中心成環，環徑如呼吸般緩緩縮放（約 10 秒一息）
   const cx = w / 2
   const cy = h * 0.42
-  const R = (0.12 + frac * 0.42) * Math.min(w, h)
+  const R = (0.12 + frac * 0.42) * Math.min(w, h) * (1 + 0.12 * Math.sin(t * 0.01))
   const dx = p.x - cx
   const dy = p.y - cy
   const d = Math.hypot(dx, dy) || 1
@@ -115,6 +120,45 @@ export function inkBurst(x = w / 2, y = h * 0.4, strength = 1) {
     const a = Math.random() * Math.PI * 2
     const r = Math.random() * 60 * strength
     blooms.push(makeBloom(x + Math.cos(a) * r, y + Math.sin(a) * r, 40 + Math.random() * 90 * strength))
+  }
+}
+
+/**
+ * 背景音樂的節拍同步（audio.js 在音符真正發聲的時刻呼叫）：
+ * kick 大鼓 → 墨點自中心輕輕一震；wood 木魚 → 中心一圈小漣漪；
+ * note 主旋律古箏 → 依音高由左到右落一點墨，形態隨主題（雲湧暈開、崑崙落在山脊、明鏡盪成小漣漪）
+ */
+export function inkBeat(kind, { midi = 64, vel = 0.2 } = {}) {
+  if (reduceMotion.matches || mode === 'gather' || !w) return
+  const cx = w / 2
+  const cy = h * 0.42
+  if (kind === 'kick') {
+    for (const p of particles) {
+      const dx = p.x - cx
+      const dy = p.y - cy
+      const d = Math.hypot(dx, dy) || 1
+      const f = 0.9 / Math.max(1, d / 220)
+      p.vx += (dx / d) * f
+      p.vy += (dy / d) * f
+    }
+    return
+  }
+  if (kind === 'wood') {
+    ripples.push({ x: cx, y: cy, age: 0, life: 70, size: 0.12 })
+    return
+  }
+  // 音高 52–86 對應畫面寬度 12%–88%
+  const x = w * (0.12 + 0.76 * Math.min(1, Math.max(0, (midi - 52) / 34))) + (Math.random() - 0.5) * 30
+  const th = themeState()
+  const theme = th.k > 0.5 ? th.cur : th.prev
+  const strength = Math.min(1, vel / 0.24)
+  if (theme === 1) {
+    const y = ridge(x, midi > 70 ? -1 : midi > 60 ? 0 : 1)
+    blooms.push(makeBloom(x, y, 18 + 40 * strength))
+  } else if (theme === 2) {
+    ripples.push({ x, y: cy + (Math.random() - 0.5) * h * 0.2, age: 0, life: 120, size: 0.1 + 0.08 * strength })
+  } else {
+    blooms.push(makeBloom(x, h * (0.18 + Math.random() * 0.4), 24 + 60 * strength))
   }
 }
 
@@ -179,6 +223,8 @@ function step() {
   const speed = reduceMotion.matches ? 0.15 : 1
   const trailLen = mode === 'gather' ? 16 : 7
   const th = themeState()
+  const cloudRound = Math.floor((th.cur === 0 ? th.n : th.n - 1) / THEMES.length)
+  wind = cloudRound % 2 ? -1 : 1
   for (const p of particles) {
     // 流場：平滑的正弦組合，模擬水流中墨的飄移；再疊上主題的力（切換時新舊主題漸變）
     const ang = Math.sin(p.x * 0.0021 + t * 0.0021 + p.seed) * Math.cos(p.y * 0.0018 - t * 0.0016) * Math.PI
@@ -234,10 +280,10 @@ function step() {
   // 明鏡：每隔幾秒在中心附近盪開一圈漣漪
   if (mode !== 'gather' && th.cur === 2 && th.k > 0.5 && t - lastRipple > 240) {
     lastRipple = t
-    ripples.push({ x: w / 2 + (Math.random() - 0.5) * w * 0.2, y: h * 0.42 + (Math.random() - 0.5) * h * 0.1, age: 0 })
+    ripples.push({ x: w / 2 + (Math.random() - 0.5) * w * 0.2, y: h * 0.42 + (Math.random() - 0.5) * h * 0.1, age: 0, life: 360, size: 0.5 })
   }
   for (const r of ripples) r.age++
-  ripples = ripples.filter(r => r.age < 360)
+  ripples = ripples.filter(r => r.age < r.life)
 }
 
 function draw() {
@@ -248,10 +294,11 @@ function draw() {
 
   ctx.lineWidth = 1
   for (const r of ripples) {
-    const k = r.age / 360
+    const k = r.age / r.life
+    const rx = 12 + k * Math.min(w, h) * r.size
     ctx.strokeStyle = `rgba(${inkRGB},${0.2 * (1 - k)})`
     ctx.beginPath()
-    ctx.ellipse(r.x, r.y, 20 + k * Math.min(w, h) * 0.5, (20 + k * Math.min(w, h) * 0.5) * 0.35, 0, 0, Math.PI * 2)
+    ctx.ellipse(r.x, r.y, rx, rx * 0.35, 0, 0, Math.PI * 2)
     ctx.stroke()
   }
 

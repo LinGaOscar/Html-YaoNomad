@@ -30,10 +30,17 @@ const writePref = (key, on) => {
   try { localStorage.setItem(key, on ? '1' : '0') } catch {}
 }
 
-let musicOn = readPref(MUSIC_KEY, false)
+let musicOn = readPref(MUSIC_KEY, true)
 let sfxOn = readPref(SFX_KEY, true)
 const listeners = new Set()
 const notify = () => listeners.forEach(fn => fn({ music: musicOn, sfx: sfxOn }))
+const beatListeners = new Set()
+
+/** 節拍事件：排程時間 t 是音訊時鐘，等到真正發聲的那一刻才通知畫面 */
+function beat(t, kind, info) {
+  if (!beatListeners.size) return
+  setTimeout(() => { if (timer) beatListeners.forEach(fn => fn(kind, info)) }, Math.max(0, (t - ctx.currentTime) * 1000))
+}
 
 let ctx = null
 let musicBus
@@ -320,9 +327,15 @@ function scheduleStep(t, n) {
   if (name !== 'intro' && step === 8) bass(t, chord.root + (bar % 2 ? 7 : 12), STEP * 5)
 
   if (drums) {
-    if (step === 0 || (name === 'B' && step === 10)) kick(t)
+    if (step === 0 || (name === 'B' && step === 10)) {
+      kick(t)
+      beat(t, 'kick')
+    }
     if (step % 4 === 2) hat(t, 0.018)
-    if (step === 12) woodblock(t, 0.12)
+    if (step === 12) {
+      woodblock(t, 0.12)
+      beat(t, 'wood')
+    }
   } else if (step === 12 && name === 'break') {
     woodblock(t, 0.08)
   }
@@ -344,6 +357,7 @@ function scheduleStep(t, n) {
     if (ending && note !== notes[0]) continue
     const long = ending || note.len >= 5
     zheng(t, note.midi, soft ? 0.17 : 0.24, long)
+    beat(t, 'note', { midi: note.midi, vel: soft ? 0.17 : 0.24 })
     // 花指：長音偶爾疊上高八度
     if (long && !soft && (bar + step) % 3 === 0) zheng(t + 0.02, note.midi + 12, 0.08)
   }
@@ -426,6 +440,7 @@ export function brush() {
 
 export const soundState = () => ({ music: musicOn, sfx: sfxOn })
 export const onSoundChange = fn => { listeners.add(fn); return () => listeners.delete(fn) }
+export const onBeat = fn => { beatListeners.add(fn); return () => beatListeners.delete(fn) }
 
 export function setMusic(on) {
   musicOn = on

@@ -150,7 +150,10 @@ h1, h2, h3, p { margin: 0; }
   flex-direction: column;
   background: var(--paper);
 }
-.appbar, #view { position: relative; z-index: 2; }
+.appbar, #view { position: relative; z-index: 2; transition: opacity 1.5s ease-out; }
+/* 閒置時內容慢慢隱入水墨（main.js 的 setupIdle），一有操作就慢慢浮現 */
+body.idle .appbar, body.idle #view { opacity: 0; transition: opacity 4s ease-in; }
+body.veiled .appbar, body.veiled #view { pointer-events: none; }
 
 @media (min-width: 900px) {
   body {

@@ -75,7 +75,6 @@ export function dexSectionHTML(hexagrams, s) {
               </button>`
             : `<button type="button" class="dex-cell" data-n="${h.number}" aria-label="第${h.number}卦，尚未遇見">${glyphHTML(h)}<span class="dex-name">第${cnNum(h.number)}卦</span></button>`
         }).join('')}</div>
-        <p class="fine">點任一卦看解說；遇見過的卦可再看白話、卦辭與最近一次卦例。只計本卦，變卦不算。</p>
         <dialog class="dex-dialog" aria-label="卦象解說"></dialog>
       </section>`
 }

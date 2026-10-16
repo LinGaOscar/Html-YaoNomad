@@ -5,8 +5,8 @@
 import { castHexagram } from './core/casting.js'
 import { fullName } from './core/hexagrams.js'
 import { ACHIEVEMENTS, castKind, dayKey, evaluate, summarize, todayDaily } from './core/progress.js'
-import { initInk, setInkMode, inkBurst, refreshColor } from './ink.js'
-import { initSound, setMusic, soundState, onSoundChange } from './audio.js'
+import { initInk, setInkMode, inkBurst, inkBeat, refreshColor } from './ink.js'
+import { initSound, setMusic, soundState, onSoundChange, onBeat } from './audio.js'
 import { renderResult, renderShared, seekInfo } from './result.js'
 import { renderBook, renderDex, glyphHTML } from './book.js'
 import {
@@ -342,6 +342,7 @@ function setupChrome() {
     toast(on ? '背景音樂：墨韻' : '背景音樂已關')
   })
   initSound()
+  onBeat(inkBeat)
 
   const fsBtn = document.getElementById('fs-btn')
   if (document.fullscreenEnabled) {
@@ -359,8 +360,42 @@ function setupChrome() {
   }
 }
 
+// ---------- 閒置：內容隱入水墨 ----------
+
+/**
+ * 畫面 5 秒沒有操作，內容慢慢淡去、只留水墨背景；一有操作就浮現回來。
+ * 起卦中、開著小窗或正在輸入時不隱去；系統設了減少動態也不做。
+ * 內容大致淡去後（veiled）才擋掉點擊，避免喚醒的那一下誤按到看不見的按鈕。
+ */
+function setupIdle() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  const body = document.body
+  let idleTimer, veilTimer
+  const busy = () =>
+    location.hash === '#/cast' ||
+    document.querySelector('dialog[open]') ||
+    document.activeElement?.matches('input, textarea')
+  const rest = () => {
+    if (busy()) return (idleTimer = setTimeout(rest, 5000))
+    body.classList.add('idle')
+    veilTimer = setTimeout(() => body.classList.add('veiled'), 2000)
+  }
+  const wake = () => {
+    clearTimeout(idleTimer)
+    clearTimeout(veilTimer)
+    body.classList.remove('idle', 'veiled')
+    idleTimer = setTimeout(rest, 5000)
+  }
+  // 換頁（含起卦完成自動轉到結果頁）也算有動靜，讓新內容先浮現
+  for (const type of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'scroll', 'touchstart', 'hashchange']) {
+    addEventListener(type, wake, { capture: true, passive: true })
+  }
+  wake()
+}
+
 migrateData()
 setupChrome()
+setupIdle()
 initInk(document.getElementById('ink'))
 addEventListener('hashchange', route)
 route()
